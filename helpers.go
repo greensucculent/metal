@@ -4,6 +4,9 @@
 package metal
 
 import (
+	"C"
+	"errors"
+	"fmt"
 	"reflect"
 	"unsafe"
 )
@@ -32,4 +35,11 @@ func toSlice[T any](data unsafe.Pointer, numElems int) []T {
 	hdr.Cap = numElems
 
 	return s
+}
+
+func metalErrToError(err *C.char, msg string) error {
+	s := C.GoString(err)
+	e := errors.New(s)
+
+	return fmt.Errorf("%s: %w", msg, e)
 }

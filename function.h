@@ -15,6 +15,4 @@ typedef struct {
   id<MTLCommandQueue> commandQueue;
 } _function;
 
-_function *function_newFunction();
-
 #endif

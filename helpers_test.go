@@ -4,6 +4,7 @@
 package metal
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -193,7 +194,7 @@ func Test_sizeof(t *testing.T) {
 	_ = fn
 }
 
-// Test_toSlice tests that toSlice returns the a slice that encapsulates the provided memory.
+// Test_toSlice tests that toSlice returns a slice that encapsulates the provided memory.
 func Test_toSlice(t *testing.T) {
 
 	var i int
@@ -294,4 +295,65 @@ func Test_toSlice(t *testing.T) {
 		_ = fmt.Sprint(invalidSlice2[1])
 		_ = fmt.Sprint(invalidSlice2[2])
 	})
+}
+
+// Test_metalErrToError tests that metalErrToError returns a go error that wraps a metal error.
+func Test_metalErrToError(t *testing.T) {
+	type test struct {
+		metalErr string
+		goErr    string
+		want     string
+	}
+
+	tests := []test{
+		{
+			// Nothing
+		},
+		{
+			// Only wrapping
+			goErr: "go error",
+			want:  "go error",
+		},
+		{
+			// Metal error with no wrapping
+			metalErr: "metal error",
+			want:     "metal error",
+		},
+		{
+			// Metal error wrapped in a go error
+			metalErr: "metal error",
+			goErr:    "go error",
+			want:     "go error: metal error",
+		},
+	}
+
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("Subtest%d_metalErr='%s'_goErr='%s'", i+1, test.metalErr, test.goErr), func(t *testing.T) {
+			// Create a C string to mimic how an error would be returned from the metal functions.
+			metalErr := cgoString(test.metalErr)
+			defer cgoFree(metalErr)
+
+			// Run any errors we have for this subtest through the helper.
+			err := metalErrToError(metalErr, test.goErr)
+
+			// If we don't have any error messages, then the error should be nil. Otherwise, we should
+			// have received the expected formatted error.
+			if test.metalErr == "" && test.goErr == "" {
+				require.Nil(t, err)
+			} else {
+				require.NotNil(t, err)
+				require.Equal(t, test.want, err.Error())
+
+				// If we have both error messages, then we should be able to unwrap the error to get the
+				// underlying metal error. Otherwise, the error shouldn't be wrapped at all.
+				unwrapErr := errors.Unwrap(err)
+				if test.metalErr != "" && test.goErr != "" {
+					require.NotNil(t, unwrapErr)
+					require.Equal(t, test.metalErr, unwrapErr.Error())
+				} else {
+					require.Nil(t, unwrapErr)
+				}
+			}
+		})
+	}
 }

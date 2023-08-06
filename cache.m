@@ -11,15 +11,23 @@ int numItems = 0;
 // be touched for anything else.
 NSLock *cacheLock = nil;
 
-// Add an item to the cache.
+// Add an item to the cache. This returns 0 and logs a message if any error is
+// encountered and the item is not cached.
 int cache_cache(void *item) {
-  NSCAssert(item != nil, @"Missing item to cache");
+  if (item == nil) {
+    NSLog(@"Missing item to cache");
+    return 0;
+  }
 
   int cacheId = 0;
 
   @synchronized(cacheLock) {
     numItems++;
     cache = realloc(cache, sizeof(void *) * numItems);
+    if (cache == nil) {
+      NSLog(@"Failed to grow cache");
+      return 0;
+    }
 
     cache[numItems - 1] = item;
 
@@ -30,16 +38,24 @@ int cache_cache(void *item) {
   return cacheId;
 }
 
-// Retrieve an item from the cache.
+// Retrieve an item from the cache. This returns nil and logs a message if any
+// error is encountered and the item is not retrieved.
 void *cache_retrieve(int cacheId) {
   void *item = nil;
 
-  @synchronized(cacheLock) {
-    NSCAssert(cacheId >= 1, @"Invalid cache Id %d", cacheId);
-    NSCAssert(cacheId <= numItems, @"Invalid cache Id %d", cacheId);
+  if (cacheId < 1) {
+    NSLog(@"Invalid cache Id: %d", cacheId);
+    return nil;
+  }
 
-    // A cache Id is an item's 1-based index in the cache. We need to convert it
-    // into a 0-based index to retrieve it from the cache.
+  @synchronized(cacheLock) {
+    if (cacheId > numItems) {
+      NSLog(@"Invalid cache Id: %d", cacheId);
+      return nil;
+    }
+
+    // A cache Id is an item's 1-based index in the cache. We need to convert
+    // it into a 0-based index to retrieve it from the cache.
     int index = cacheId - 1;
 
     item = cache[index];
@@ -50,12 +66,19 @@ void *cache_retrieve(int cacheId) {
 
 // Remove an item from the cache.
 void cache_remove(int cacheId) {
-  @synchronized(cacheLock) {
-    NSCAssert(cacheId >= 1, @"Invalid cache Id %d", cacheId);
-    NSCAssert(cacheId <= numItems, @"Invalid cache Id %d", cacheId);
+  if (cacheId < 1) {
+    NSLog(@"Invalid cache Id: %d", cacheId);
+    return;
+  }
 
-    // A cache Id is an item's 1-based index in the cache. We need to convert it
-    // into a 0-based index to retrieve it from the cache.
+  @synchronized(cacheLock) {
+    if (cacheId > numItems) {
+      NSLog(@"Invalid cache Id: %d", cacheId);
+      return;
+    }
+
+    // A cache Id is an item's 1-based index in the cache. We need to convert
+    // it into a 0-based index to retrieve it from the cache.
     int index = cacheId - 1;
 
     // Set the item to nil.

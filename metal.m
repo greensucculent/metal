@@ -10,6 +10,15 @@
 
 id<MTLDevice> device;
 
+// Log an error to console and optionally set target to the error message.
+void logError(NSString *message, const char **target) {
+  if (target != nil) {
+    *target = [message UTF8String];
+  }
+
+  NSLog(@"%@", message);
+}
+
 // Initialize the default GPU. This should be called only once for the lifetime
 // of the app.
 void metal_init() {
@@ -20,12 +29,18 @@ void metal_init() {
 
 // Set up a new pipeline for executing the specified function in the provided
 // MTL code on the default GPU. This returns an Id that must be used to actually
-// run the function. This should be called only once for every function.
-int metal_newFunction(const char *metalCode, const char *funcName) {
+// run the function. This should be called only once for every function. If any
+// error is encountered initializing the metal function, this returns 0 and sets
+// an error message in error.
+int metal_newFunction(const char *metalCode, const char *funcName,
+                      const char **error) {
   // Set up a new function object to hold the various resources for the
   // pipeline.
   _function *function = function_newFunction();
-  NSCAssert(function != nil, @"Failed to initialize function");
+  if (function == nil) {
+    logError(@"Failed to initialize function", error);
+    return 0;
+  }
 
   // Create a new library of metal code, which will be used to get a
   // reference to the function we want to run on the GPU. Normnally, we
@@ -38,14 +53,21 @@ int metal_newFunction(const char *metalCode, const char *funcName) {
       [device newLibraryWithSource:[NSString stringWithUTF8String:metalCode]
                            options:[MTLCompileOptions new]
                              error:&libraryError];
-  NSCAssert(library != nil, @"Failed to create library: %@", libraryError);
+  if (library == nil) {
+    logError(@"Failed to create library", error);
+    NSLog(@"%@", libraryError);
+    return 0;
+  }
 
   // Get a reference to the function in the code that's now in the new library.
   // (Note that this is not executable yet. We need a pipeline in order to
   // actually run this function.)
   id<MTLFunction> metalFunc =
       [library newFunctionWithName:[NSString stringWithUTF8String:funcName]];
-  NSCAssert(metalFunc != nil, @"Failed to find function");
+  if (metalFunc == nil) {
+    logError(@"Failed to find function", error);
+    return 0;
+  }
 
   // Convert the function object we just created into a pipeline so we can run
   // the function. A pipeline contains the actual instructions/steps that the
@@ -54,12 +76,19 @@ int metal_newFunction(const char *metalCode, const char *funcName) {
   function->pipeline =
       [device newComputePipelineStateWithFunction:metalFunc
                                             error:&pipelineError];
-  NSCAssert(function->pipeline != nil, @"Failed to create pipeline: %@",
-            pipelineError);
+  if (function->pipeline == nil) {
+    logError([NSString stringWithFormat:@"Failed to create pipeline: %@",
+                                        pipelineError],
+             error);
+    return 0;
+  }
 
   // Set up a command queue. This is what sends the work to the GPU.
   function->commandQueue = [device newCommandQueue];
-  NSCAssert(function->commandQueue != nil, @"Failed to set up command queue");
+  if (function->commandQueue == nil) {
+    logError(@"Failed to set up command queue", error);
+    return 0;
+  }
 
   // Save the function for later use and return an Id referencing it.
   return cache_cache(function);
@@ -69,20 +98,29 @@ int metal_newFunction(const char *metalCode, const char *funcName) {
 // argument to the metal code in the same order as the buffer Ids here. This is
 // not thread-safe.
 void metal_runFunction(int functionId, int width, int height, int depth,
-                       int *bufferIds, int numBufferIds) {
+                       int *bufferIds, int numBufferIds, const char **error) {
   // Fetch the function from the cache.
   _function *function = cache_retrieve(functionId);
-  NSCAssert(function != nil, @"Failed to retrieve function");
+  if (function == nil) {
+    logError(@"Failed to retrieve function", error);
+    return;
+  }
 
   // Create a command buffer from the command queue in the pipeline. This will
   // hold the processing commands and move through the queue to the GPU.
   id<MTLCommandBuffer> commandBuffer = [function->commandQueue commandBuffer];
-  NSCAssert(commandBuffer != nil, @"Failed to set up command buffer");
+  if (commandBuffer == nil) {
+    logError(@"Failed to set up command buffer", error);
+    return;
+  }
 
   // Set up an encoder to actually write the (compute pass) commands and
   // parameters to the command buffer we just created.
   id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
-  NSCAssert(encoder != nil, @"Failed to set up compute encoder");
+  if (encoder == nil) {
+    logError(@"Failed to set up compute encoder", error);
+    return;
+  }
 
   // Set the pipeline that the command will use.
   [encoder setComputePipelineState:function->pipeline];
@@ -95,7 +133,10 @@ void metal_runFunction(int functionId, int width, int height, int depth,
   for (int i = 0; i < numBufferIds; i++) {
     // Retrieve the buffer for this Id.
     id<MTLBuffer> buffer = cache_retrieve(bufferIds[i]);
-    NSCAssert(buffer != nil, @"Failed to retrieve buffer");
+    if (buffer == nil) {
+      logError(@"Failed to retrieve buffer", error);
+      return;
+    }
 
     // Add the buffer to the command with the appropriate index.
     [encoder setBuffer:buffer offset:0 atIndex:i];
@@ -144,20 +185,29 @@ void metal_runFunction(int functionId, int width, int height, int depth,
 // Allocate a block of memory accessible to both the CPU and GPU that is large
 // enough to hold the number of bytes specified. The buffer is cached and can be
 // retrieved with the buffer Id that's returned. A buffer can be supplied as an
-// argument to the metal function when the function is run.
-int metal_newBuffer(int size) {
+// argument to the metal function when the function is run. If any error is
+// encountered creating the buffer, this returns 0 and sets an error
+// message in error.
+int metal_newBuffer(int size, const char **error) {
   id<MTLBuffer> buffer =
       [device newBufferWithLength:(size) options:MTLResourceStorageModeShared];
-  NSCAssert(buffer != nil, @"Failed to create buffer");
+  if (buffer == nil) {
+    logError(@"Failed to create buffer", error);
+    return 0;
+  }
 
   // Add the buffer to the buffer cache and return its unique Id.
   return cache_cache(buffer);
 }
 
-// Retrieve a buffer from the cache.
-void *metal_retrieveBuffer(int bufferId) {
+// Retrieve a buffer from the cache. If any error is encountered retrieving the
+// buffer, this returns nil and sets an error message in error.
+void *metal_retrieveBuffer(int bufferId, const char **error) {
   id<MTLBuffer> buffer = cache_retrieve(bufferId);
-  NSCAssert(buffer != nil, @"Failed to retrieve buffer");
+  if (buffer == nil) {
+    logError(@"Failed to retrieve buffer", error);
+    return nil;
+  }
 
   return [buffer contents];
 }

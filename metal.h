@@ -10,13 +10,14 @@
 void metal_init();
 
 // Functions that must be called once for every metal function
-int metal_newFunction(const char *metalCode, const char *funcName);
+int metal_newFunction(const char *metalCode, const char *funcName,
+                      const char **);
 void metal_runFunction(int functionId, int width, int height, int depth,
-                       int *bufferIds, int numBufferIds);
+                       int *bufferIds, int numBufferIds, const char **);
 
 // Functions that must be called once for every buffer used as an argument to
 // a metal function
-int metal_newBuffer(int size);
-void *metal_retrieveBuffer(int bufferId);
+int metal_newBuffer(int size, const char **);
+void *metal_retrieveBuffer(int bufferId, const char **);
 
 #endif

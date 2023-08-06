@@ -3,8 +3,13 @@
 
 package metal
 
+/*
+#include <stdlib.h>
+#include <string.h>
+*/
+import "C"
+
 import (
-	"C"
 	"errors"
 	"fmt"
 	"reflect"
@@ -37,9 +42,31 @@ func toSlice[T any](data unsafe.Pointer, numElems int) []T {
 	return s
 }
 
-func metalErrToError(err *C.char, msg string) error {
-	s := C.GoString(err)
-	e := errors.New(s)
+// metalErrToError wraps the metal error metalErr inside wrap.
+func metalErrToError(metalErr *C.char, wrap string) error {
+	switch {
+	case metalErr == nil || C.strlen(metalErr) == 0:
+		if wrap == "" {
+			// We have neither a metal error nor any wrapping. Return nil.
+			return nil
+		}
 
-	return fmt.Errorf("%s: %w", msg, e)
+		// We have wrapping but we don't have a metal error. Return just the wrapping.
+		return errors.New(wrap)
+
+	default:
+		mErr := errors.New(C.GoString(metalErr))
+
+		if wrap == "" {
+			// We have a metal error but we don't have any wrapping. Return just the metal error.
+			return mErr
+		}
+
+		// We have both a metal error and wrapping. Return both of them formatted together.
+		return fmt.Errorf("%s: %w", wrap, mErr)
+	}
 }
+
+// cgoString and cgoFree are wrappers around cgo functions to enable using cgo in test files.
+func cgoString(s string) *C.char { return C.CString(s) }
+func cgoFree(s *C.char)          { C.free(unsafe.Pointer(s)) }

@@ -11,7 +11,9 @@
 id<MTLDevice> device;
 
 // Log an error to console and optionally set target to the error message.
-void logError(NSString *message, const char **target) {
+void logError(const char **target, NSString *format, ...) {
+  NSString *message = [NSString stringWithFormat:@"%@", format];
+
   if (target != nil) {
     *target = [message UTF8String];
   }
@@ -34,11 +36,20 @@ void metal_init() {
 // an error message in error.
 int metal_newFunction(const char *metalCode, const char *funcName,
                       const char **error) {
+  if (strlen(metalCode) == 0) {
+    logError(error, @"Missing metal code");
+    return 0;
+  }
+  if (strlen(funcName) == 0) {
+    logError(error, @"Missing function name");
+    return 0;
+  }
+
   // Set up a new function object to hold the various resources for the
   // pipeline.
-  _function *function = function_newFunction();
+  _function *function = malloc(sizeof(_function));
   if (function == nil) {
-    logError(@"Failed to initialize function", error);
+    logError(error, @"Failed to initialize function");
     return 0;
   }
 
@@ -54,8 +65,8 @@ int metal_newFunction(const char *metalCode, const char *funcName,
                            options:[MTLCompileOptions new]
                              error:&libraryError];
   if (library == nil) {
-    logError(@"Failed to create library", error);
-    NSLog(@"%@", libraryError);
+    logError(error, @"Failed to create library (see console log)");
+    NSLog(@"Failed to create library: %@", libraryError);
     return 0;
   }
 
@@ -65,7 +76,8 @@ int metal_newFunction(const char *metalCode, const char *funcName,
   id<MTLFunction> metalFunc =
       [library newFunctionWithName:[NSString stringWithUTF8String:funcName]];
   if (metalFunc == nil) {
-    logError(@"Failed to find function", error);
+    logError(error, [NSString stringWithFormat:@"Failed to find function '%s'",
+                                               funcName]);
     return 0;
   }
 
@@ -77,21 +89,26 @@ int metal_newFunction(const char *metalCode, const char *funcName,
       [device newComputePipelineStateWithFunction:metalFunc
                                             error:&pipelineError];
   if (function->pipeline == nil) {
-    logError([NSString stringWithFormat:@"Failed to create pipeline: %@",
-                                        pipelineError],
-             error);
+    logError(error, @"Failed to create pipeline (see console log)");
+    NSLog(@"Failed to create pipeline: %@", pipelineError);
     return 0;
   }
 
   // Set up a command queue. This is what sends the work to the GPU.
   function->commandQueue = [device newCommandQueue];
   if (function->commandQueue == nil) {
-    logError(@"Failed to set up command queue", error);
+    logError(error, @"Failed to set up command queue");
     return 0;
   }
 
   // Save the function for later use and return an Id referencing it.
-  return cache_cache(function);
+  int functionId = cache_cache(function);
+  if (functionId == 0) {
+    logError(error, @"Failed to cache function");
+    return 0;
+  }
+
+  return functionId;
 }
 
 // Execute the computational process on the GPU. Each buffer is supplied as an
@@ -102,7 +119,7 @@ void metal_runFunction(int functionId, int width, int height, int depth,
   // Fetch the function from the cache.
   _function *function = cache_retrieve(functionId);
   if (function == nil) {
-    logError(@"Failed to retrieve function", error);
+    logError(error, @"Failed to retrieve function");
     return;
   }
 
@@ -110,7 +127,7 @@ void metal_runFunction(int functionId, int width, int height, int depth,
   // hold the processing commands and move through the queue to the GPU.
   id<MTLCommandBuffer> commandBuffer = [function->commandQueue commandBuffer];
   if (commandBuffer == nil) {
-    logError(@"Failed to set up command buffer", error);
+    logError(error, @"Failed to set up command buffer");
     return;
   }
 
@@ -118,7 +135,7 @@ void metal_runFunction(int functionId, int width, int height, int depth,
   // parameters to the command buffer we just created.
   id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
   if (encoder == nil) {
-    logError(@"Failed to set up compute encoder", error);
+    logError(error, @"Failed to set up compute encoder");
     return;
   }
 
@@ -134,7 +151,8 @@ void metal_runFunction(int functionId, int width, int height, int depth,
     // Retrieve the buffer for this Id.
     id<MTLBuffer> buffer = cache_retrieve(bufferIds[i]);
     if (buffer == nil) {
-      logError(@"Failed to retrieve buffer", error);
+      logError(error, @"Failed to retrieve buffer %d/%d using Id %d", i + 1,
+               numBufferIds, bufferIds[i]);
       return;
     }
 
@@ -192,12 +210,18 @@ int metal_newBuffer(int size, const char **error) {
   id<MTLBuffer> buffer =
       [device newBufferWithLength:(size) options:MTLResourceStorageModeShared];
   if (buffer == nil) {
-    logError(@"Failed to create buffer", error);
+    logError(error, @"Failed to create buffer with %d bytes", size);
     return 0;
   }
 
   // Add the buffer to the buffer cache and return its unique Id.
-  return cache_cache(buffer);
+  int bufferId = cache_cache(buffer);
+  if (bufferId == 0) {
+    logError(error, @"Failed to cache buffer");
+    return 0;
+  }
+
+  return bufferId;
 }
 
 // Retrieve a buffer from the cache. If any error is encountered retrieving the
@@ -205,7 +229,7 @@ int metal_newBuffer(int size, const char **error) {
 void *metal_retrieveBuffer(int bufferId, const char **error) {
   id<MTLBuffer> buffer = cache_retrieve(bufferId);
   if (buffer == nil) {
-    logError(@"Failed to retrieve buffer", error);
+    logError(error, @"Failed to retrieve buffer");
     return nil;
   }
 

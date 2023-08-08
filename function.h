@@ -11,6 +11,7 @@
 // import because of a bug in LLVM that leads to a compilation error of "struct
 // size calculation error off=8 bytesize=0".
 typedef struct {
+  id<MTLFunction> function;
   id<MTLComputePipelineState> pipeline;
   id<MTLCommandQueue> commandQueue;
 } _function;

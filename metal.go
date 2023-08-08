@@ -58,6 +58,13 @@ func (function Function) Valid() bool {
 	return function.id > 0
 }
 
+// String returns the name of the metal function.
+func (function Function) String() string {
+	name := C.metal_functionName(C.int(function.id))
+
+	return C.GoString(name)
+}
+
 // A BufferId references a specific metal buffer created with NewBuffer.
 type BufferId int
 

@@ -4,7 +4,7 @@
 package metal
 
 // frameworks not included:
-// -framework Cocoa
+// Cocoa
 
 /*
 #cgo LDFLAGS: -framework Metal -framework CoreGraphics -framework Foundation
@@ -30,16 +30,32 @@ type Function struct {
 
 // NewFunction sets up a new function that will run on the default GPU. It is built with the
 // specified function in the provided metal code.
-func NewFunction(metalSource, funcName string) Function {
+func NewFunction(metalSource, funcName string) (Function, error) {
 	src := C.CString(metalSource)
 	defer C.free(unsafe.Pointer(src))
 
 	name := C.CString(funcName)
 	defer C.free(unsafe.Pointer(name))
 
-	return Function{
-		id: int(C.metal_newFunction(src, name)),
+	err := C.CString("")
+	defer C.free(unsafe.Pointer(err))
+
+	id := int(C.metal_newFunction(src, name, &err))
+	if id == 0 {
+		return Function{}, metalErrToError(err, "Unable to set up metal function")
 	}
+
+	function := Function{
+		id: id,
+	}
+
+	return function, nil
+}
+
+// Valid checks whether or not the Function is valid and can be used to run a computational process
+// on the GPU.
+func (function Function) Valid() bool {
+	return function.id > 0
 }
 
 // A BufferId references a specific metal buffer created with NewBuffer.
@@ -54,20 +70,30 @@ type BufferId int
 // Only the contents of the slice should be modified. Its length and capacity and the block of
 // memory that it points to should not be altered. The slice's length and capacity are equal to
 // numElems, and its underlying memory has (numElems * sizeof(T)) bytes.
-func NewBuffer[T any](numElems int) (BufferId, []T) {
+func NewBuffer[T any](numElems int) (BufferId, []T, error) {
 	if numElems <= 0 {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	elemSize := sizeof[T]()
 	numBytes := elemSize * numElems
 
-	// Allocate memory for the new buffer, and then retrieve a pointer to the beginning of the new
-	// memory using the buffer's Id.
-	bufferId := C.metal_newBuffer(C.int(numBytes))
-	newBuffer := C.metal_retrieveBuffer(bufferId)
+	err := C.CString("")
+	defer C.free(unsafe.Pointer(err))
 
-	return BufferId(bufferId), toSlice[T](newBuffer, numElems)
+	// Allocate memory for the new buffer.
+	bufferId := C.metal_newBuffer(C.int(numBytes), &err)
+	if int(bufferId) == 0 {
+		return 0, nil, metalErrToError(err, "Unable to create buffer")
+	}
+
+	// Retrieve a pointer to the beginning of the new memory using the buffer's Id.
+	newBuffer := C.metal_retrieveBuffer(bufferId, &err)
+	if newBuffer == nil {
+		return 0, nil, metalErrToError(err, "Unable to retrieve buffer")
+	}
+
+	return BufferId(bufferId), toSlice[T](newBuffer, numElems), nil
 }
 
 // A Grid specifies how many threads we need to perform all the calculations. There should be one
@@ -103,7 +129,7 @@ type Grid struct {
 // Run executes the computational function on the GPU. buffers is a list of buffers that have a
 // buffer Id, which is used to retrieve the correct block of memory for the buffer. Each buffer is
 // supplied as an argument to the metal function in the order given here.
-func Run(function Function, grid Grid, buffers ...BufferId) {
+func Run(function Function, grid Grid, buffers ...BufferId) error {
 
 	// Make a list of buffer Ids.
 	var bufferIds []C.int
@@ -129,6 +155,12 @@ func Run(function Function, grid Grid, buffers ...BufferId) {
 		depth = 1
 	}
 
+	err := C.CString("")
+	defer C.free(unsafe.Pointer(err))
+
 	// Run the computation on the GPU.
-	C.metal_runFunction(C.int(function.id), width, height, depth, bufferPtr, C.int(len(bufferIds)))
+	C.metal_runFunction(C.int(function.id), width, height, depth, bufferPtr, C.int(len(bufferIds)), &err)
+
+	return metalErrToError(err, "Unable to run metal function")
+	return nil
 }

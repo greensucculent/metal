@@ -20,4 +20,7 @@ void metal_runFunction(int functionId, int width, int height, int depth,
 int metal_newBuffer(int size, const char **);
 void *metal_retrieveBuffer(int bufferId, const char **);
 
+// Functions for querying data on a metal function
+const char *metal_functionName(int);
+
 #endif

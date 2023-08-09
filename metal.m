@@ -27,6 +27,7 @@ void metal_init() {
   // Get the default MTLDevice (each GPU is assigned its own device).
   device = MTLCreateSystemDefaultDevice();
   NSCAssert(device != nil, @"Failed to find default GPU");
+  cache_init();
 }
 
 // Set up a new pipeline for executing the specified function in the provided
@@ -73,20 +74,20 @@ int metal_newFunction(const char *metalCode, const char *funcName,
   // Get a reference to the function in the code that's now in the new library.
   // (Note that this is not executable yet. We need a pipeline in order to
   // actually run this function.)
-  id<MTLFunction> metalFunc =
+  function->function =
       [library newFunctionWithName:[NSString stringWithUTF8String:funcName]];
-  if (metalFunc == nil) {
+  if (function->function == nil) {
     logError(error, [NSString stringWithFormat:@"Failed to find function '%s'",
                                                funcName]);
     return 0;
   }
 
-  // Convert the function object we just created into a pipeline so we can run
-  // the function. A pipeline contains the actual instructions/steps that the
-  // GPU uses to execute the code.
+  // Convert the function object we just created into a pipeline so we can
+  // run the function. A pipeline contains the actual instructions/steps
+  // that the GPU uses to execute the code.
   NSError *pipelineError = nil;
   function->pipeline =
-      [device newComputePipelineStateWithFunction:metalFunc
+      [device newComputePipelineStateWithFunction:function->function
                                             error:&pipelineError];
   if (function->pipeline == nil) {
     logError(error, @"Failed to create pipeline (see console log)");

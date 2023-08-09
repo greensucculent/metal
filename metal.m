@@ -6,20 +6,10 @@
 
 #include "metal.h"
 #include "cache.h"
+#include "error.h"
 #include "function.h"
 
 id<MTLDevice> device;
-
-// Log an error to console and optionally set target to the error message.
-void logError(const char **target, NSString *format, ...) {
-  NSString *message = [NSString stringWithFormat:@"%@", format];
-
-  if (target != nil) {
-    *target = [message UTF8String];
-  }
-
-  NSLog(@"%@", message);
-}
 
 // Initialize the default GPU. This should be called only once for the lifetime
 // of the app.

@@ -59,6 +59,12 @@ func NewBuffer[T any](numElems int) (BufferId, []T, error) {
 	return BufferId(bufferId), toSlice[T](newBuffer, numElems), nil
 }
 
+// Valid checks whether or not the BufferId is valid and can be used to run a computational process
+// on the GPU.
+func (id BufferId) Valid() bool {
+	return id > 0
+}
+
 // A Function executes computational processes on the default GPU.
 type Function struct {
 	// Id of the metal function, as assigned by the underlying code that creates and manages it.
@@ -98,6 +104,10 @@ func (function Function) Valid() bool {
 
 // String returns the name of the metal function.
 func (function Function) String() string {
+	if !function.Valid() {
+		return ""
+	}
+
 	name := C.metal_functionName(C.int(function.id))
 
 	return C.GoString(name)

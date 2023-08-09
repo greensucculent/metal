@@ -108,7 +108,7 @@ func (function Function) String() string {
 		return ""
 	}
 
-	name := C.metal_functionName(C.int(function.id))
+	name := C.function_name(C.int(function.id))
 
 	return C.GoString(name)
 }

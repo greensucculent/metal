@@ -21,6 +21,6 @@ int metal_newBuffer(int size, const char **);
 void *metal_retrieveBuffer(int bufferId, const char **);
 
 // Functions for querying data on a metal function
-const char *metal_functionName(int);
+const char *function_name(int);
 
 #endif

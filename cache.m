@@ -11,6 +11,7 @@ int numItems = 0;
 // be touched for anything else.
 NSLock *cacheLock = nil;
 
+// Initialize the global cache.
 void cache_init() { cacheLock = [[NSLock alloc] init]; }
 
 // Add an item to the cache. This returns 0 and logs a message if any error is

@@ -125,6 +125,10 @@ func Test_sizeof(t *testing.T) {
 	require.Equal(t, int(unsafe.Sizeof(slc)), sizeof[[]uint64]())
 	require.Equal(t, int(reflect.TypeOf(slc).Size()), sizeof[[]uint64]())
 	require.Equal(t, 24, sizeof[[]uint64]()) // slice header = uintptr + (2 * int), or 8 + (2 * 8)
+	slc = []uint64{0, 1, 2, 3, 4}
+	require.Equal(t, int(unsafe.Sizeof(slc)), sizeof[[]uint64]())
+	require.Equal(t, int(reflect.TypeOf(slc).Size()), sizeof[[]uint64]())
+	require.Equal(t, 24, sizeof[[]uint64]()) // slice header = uintptr + (2 * int), or 8 + (2 * 8)
 
 	// Struct
 	type MyStruct1 struct {

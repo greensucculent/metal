@@ -263,6 +263,20 @@ func Test_BufferId(t *testing.T) {
 // buffer with the expected underlying type and number of elements.
 func subtest_BufferId_NewBuffer(t *testing.T) {
 
+	// Invalid configuration (no elements).
+	bufferId, buffer, err := NewBuffer[int](0)
+	require.NotNil(t, err)
+	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, BufferId(0), bufferId)
+	require.Nil(t, buffer)
+
+	// Invalid configuration (negative elements).
+	bufferId, buffer, err = NewBuffer[int](-1)
+	require.NotNil(t, err)
+	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, BufferId(0), bufferId)
+	require.Nil(t, buffer)
+
 	testNewBuffer(t, func(i int) bool { return i%2 == 1 })
 	testNewBuffer(t, func(i int) byte { return byte(i) })
 	testNewBuffer(t, func(i int) rune { return rune(i) })

@@ -13,6 +13,7 @@ package metal
 import "C"
 
 import (
+	"errors"
 	"unsafe"
 )
 
@@ -35,7 +36,7 @@ type BufferId int
 // numElems, and its underlying memory has (numElems * sizeof(T)) bytes.
 func NewBuffer[T any](numElems int) (BufferId, []T, error) {
 	if numElems <= 0 {
-		return 0, nil, nil
+		return 0, nil, errors.New("Invalid number of elements")
 	}
 
 	elemSize := sizeof[T]()

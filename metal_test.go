@@ -395,5 +395,7 @@ func subtest_BufferId_ThreadSafe(t *testing.T) {
 		_, ok := idMap[bufferId]
 		require.False(t, ok)
 		idMap[bufferId] = struct{}{}
+
+		idCnt++
 	}
 }

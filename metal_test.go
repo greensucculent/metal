@@ -26,9 +26,13 @@ kernel void transfer(device float *input, device float *result, uint index [[thr
 }
 `
 
+var (
+	idCnt = 0
+)
+
 type subtest struct {
 	name string
-	f    func(t *testing.T)
+	f    func(*testing.T)
 }
 
 // runSubtests sequentially runs a list of subtests.
@@ -109,6 +113,7 @@ func subtest_Function_NewFunction(t *testing.T) {
 			if scenario.wantErr == "" {
 				require.Nil(t, err, "Unable to create metal function: %s", err)
 				require.True(t, function.Valid())
+				idCnt++
 			} else {
 				require.NotNil(t, err)
 				require.Equal(t, scenario.wantErr, err.Error())
@@ -121,8 +126,8 @@ func subtest_Function_NewFunction(t *testing.T) {
 // subtest_Function_Valid is a subtest for Function. It tests that Function's Valid method correctly
 // identifies a valid function.
 func subtest_Function_Valid(t *testing.T) {
-	// A valid Function has a positive Id. Let's run through a bunch of numbers and make sure we
-	// always report the correct status.
+	// A valid Function has a positive Id. Let's run through a bunch of numbers and test that Valid
+	// always reports the correct status.
 	for i := -100_00; i <= 100_000; i++ {
 		var function Function
 		function.id = i
@@ -143,23 +148,27 @@ func subtest_Function_Id(t *testing.T) {
 	require.NotNil(t, err)
 	require.Equal(t, 0, function.id)
 
-	// Valid configuration: Id should 2, indicating a metal function was added to the cache
-	// successfully. (The cached function at Id 1 was already created in an earlier subtest.)
+	// Valid configuration: Id should be idCnt + 1, indicating a metal function was created and
+	// added to the cache successfully.
 	function, err = NewFunction(sourceCommon+sourceTransfer, "transfer")
 	require.Nil(t, err)
-	require.Equal(t, 2, function.id)
+	require.Equal(t, idCnt+1, function.id)
+	idCnt++
 
-	// Valid configuration: Id should 3, indicating a new metal function was created.
+	// Valid configuration: Id should be idCnt + 1, indicating a metal function was created and
+	// added to the cache successfully.
 	function, err = NewFunction(sourceCommon+sourceTransfer, "transfer")
 	require.Nil(t, err)
-	require.Equal(t, 3, function.id)
+	require.Equal(t, idCnt+1, function.id)
+	idCnt++
 
 	// Create a range of new functions and test that the returned function Id is always incremented
 	// by 1.
-	for i := 4; i < 100; i++ {
+	for i := 0; i < 100; i++ {
 		function, err := NewFunction(sourceCommon+sourceTransfer, "transfer")
 		require.Nil(t, err)
-		require.Equal(t, i, function.id)
+		require.Equal(t, idCnt+1, function.id)
+		idCnt++
 	}
 }
 
@@ -181,14 +190,15 @@ func subtest_Function_Name(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, function.Valid())
 	require.Equal(t, "transfer", function.String())
+	idCnt++
 }
 
 // subtest_Function_ThreadSafe is a subtest for Function. It tests that NewFunction can handle
-// multiple parallel invocations and still return the correct function Id.
+// multiple parallel invocations and still return the correct Id.
 func subtest_Function_ThreadSafe(t *testing.T) {
 	type data struct {
-		wantName string
 		function Function
+		wantName string
 	}
 
 	// We're going to use a wait group to block each goroutine after it's prepared until they're all
@@ -214,8 +224,8 @@ func subtest_Function_ThreadSafe(t *testing.T) {
 			require.Nil(t, err, "Unable to create metal function %s: %s", functionName, err)
 
 			dataCh <- data{
-				wantName: functionName,
 				function: function,
+				wantName: functionName,
 			}
 		}()
 
@@ -234,5 +244,7 @@ func subtest_Function_ThreadSafe(t *testing.T) {
 
 		haveName := data.function.String()
 		require.Equal(t, data.wantName, haveName)
+
+		idCnt++
 	}
 }

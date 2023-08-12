@@ -104,14 +104,15 @@ int metal_newFunction(const char *metalCode, const char *funcName,
 
 // Execute the computational process on the GPU. Each buffer is supplied as an
 // argument to the metal code in the same order as the buffer Ids here. This is
-// not thread-safe.
-void metal_runFunction(int functionId, int width, int height, int depth,
-                       int *bufferIds, int numBufferIds, const char **error) {
+// not thread-safe. If any error is encountered running the metal function, this
+// returns false and sets an error message in error.
+_Bool metal_runFunction(int functionId, int width, int height, int depth,
+                        int *bufferIds, int numBufferIds, const char **error) {
   // Fetch the function from the cache.
   _function *function = cache_retrieve(functionId);
   if (function == nil) {
     logError(error, @"Failed to retrieve function");
-    return;
+    return false;
   }
 
   // Create a command buffer from the command queue in the pipeline. This will
@@ -119,7 +120,7 @@ void metal_runFunction(int functionId, int width, int height, int depth,
   id<MTLCommandBuffer> commandBuffer = [function->commandQueue commandBuffer];
   if (commandBuffer == nil) {
     logError(error, @"Failed to set up command buffer");
-    return;
+    return false;
   }
 
   // Set up an encoder to actually write the (compute pass) commands and
@@ -127,7 +128,7 @@ void metal_runFunction(int functionId, int width, int height, int depth,
   id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
   if (encoder == nil) {
     logError(error, @"Failed to set up compute encoder");
-    return;
+    return false;
   }
 
   // Set the pipeline that the command will use.
@@ -142,9 +143,12 @@ void metal_runFunction(int functionId, int width, int height, int depth,
     // Retrieve the buffer for this Id.
     id<MTLBuffer> buffer = cache_retrieve(bufferIds[i]);
     if (buffer == nil) {
-      logError(error, @"Failed to retrieve buffer %d/%d using Id %d", i + 1,
-               numBufferIds, bufferIds[i]);
-      return;
+      logError(
+          error,
+          [NSString
+              stringWithFormat:@"Failed to retrieve buffer %d/%d using Id %d",
+                               i + 1, numBufferIds, bufferIds[i]]);
+      return false;
     }
 
     // Add the buffer to the command with the appropriate index.
@@ -189,6 +193,8 @@ void metal_runFunction(int functionId, int width, int height, int depth,
   // and run on the GPU, and then wait for the calculations to finish.
   [commandBuffer commit];
   [commandBuffer waitUntilCompleted];
+
+  return true;
 }
 
 // Allocate a block of memory accessible to both the CPU and GPU that is large
@@ -201,7 +207,10 @@ int metal_newBuffer(int size, const char **error) {
   id<MTLBuffer> buffer =
       [device newBufferWithLength:(size) options:MTLResourceStorageModeShared];
   if (buffer == nil) {
-    logError(error, @"Failed to create buffer with %d bytes", size);
+    logError(
+        error,
+        [NSString
+            stringWithFormat:@"Failed to create buffer with %d bytes", size]);
     return 0;
   }
 

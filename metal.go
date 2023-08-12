@@ -177,7 +177,9 @@ func (function Function) Run(grid Grid, buffers ...BufferId) error {
 	defer C.free(unsafe.Pointer(err))
 
 	// Run the computation on the GPU.
-	C.metal_runFunction(C.int(function.id), width, height, depth, bufferPtr, C.int(len(bufferIds)), &err)
+	if ok := C.metal_runFunction(C.int(function.id), width, height, depth, bufferPtr, C.int(len(bufferIds)), &err); !ok {
+		return metalErrToError(err, "Unable to run metal function")
+	}
 
 	return nil
 }

@@ -46,13 +46,13 @@ func NewBuffer[T any](numElems int) (BufferId, []T, error) {
 	defer C.free(unsafe.Pointer(err))
 
 	// Allocate memory for the new buffer.
-	bufferId := C.metal_newBuffer(C.int(numBytes), &err)
+	bufferId := C.buffer_new(C.int(numBytes), &err)
 	if int(bufferId) == 0 {
 		return 0, nil, metalErrToError(err, "Unable to create buffer")
 	}
 
 	// Retrieve a pointer to the beginning of the new memory using the buffer's Id.
-	newBuffer := C.metal_retrieveBuffer(bufferId, &err)
+	newBuffer := C.buffer_retrieve(bufferId, &err)
 	if newBuffer == nil {
 		return 0, nil, metalErrToError(err, "Unable to retrieve buffer")
 	}
@@ -85,7 +85,7 @@ func NewFunction(metalSource, funcName string) (Function, error) {
 	err := C.CString("")
 	defer C.free(unsafe.Pointer(err))
 
-	id := int(C.metal_newFunction(src, name, &err))
+	id := int(C.function_new(src, name, &err))
 	if id == 0 {
 		return Function{}, metalErrToError(err, "Unable to set up metal function")
 	}
@@ -177,7 +177,7 @@ func (function Function) Run(grid Grid, buffers ...BufferId) error {
 	defer C.free(unsafe.Pointer(err))
 
 	// Run the computation on the GPU.
-	if ok := C.metal_runFunction(C.int(function.id), width, height, depth, bufferPtr, C.int(len(bufferIds)), &err); !ok {
+	if ok := C.function_run(C.int(function.id), width, height, depth, bufferPtr, C.int(len(bufferIds)), &err); !ok {
 		return metalErrToError(err, "Unable to run metal function")
 	}
 

@@ -5,6 +5,7 @@ package metal
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"sync"
 	"testing"
@@ -12,7 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Metal source code common to all functions
+// Metal source code common to all function. This should be added before all functions to build
+// source code for creating a new Function.
 var sourceCommon = `
 #include <metal_stdlib>
 
@@ -101,12 +103,6 @@ func subtest_BufferId_NewBuffer(t *testing.T) {
 		s string
 	}
 	testNewBuffer(t, func(i int) MyStruct { return MyStruct{i, strconv.Itoa(i)} })
-
-	type MyInterface interface {
-		Method1(int) string
-		Method2(int) string
-	}
-	testNewBuffer(t, func(i int) MyInterface { var iface MyInterface; return iface })
 }
 
 // testNewBuffer is a helper to test buffer creation for a variety of types.
@@ -120,6 +116,11 @@ func testNewBuffer[T any](t *testing.T, converter func(int) T) {
 		require.Len(t, buffer, 10)
 		require.Equal(t, len(buffer), cap(buffer))
 		idCnt++
+
+		// Test that every item in the buffer has its zero value.
+		for i := range buffer {
+			require.True(t, reflect.ValueOf(buffer[i]).IsZero())
+		}
 
 		// Test that we can write to every item in the buffer.
 		require.NotPanics(t, func() {

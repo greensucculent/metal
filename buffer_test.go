@@ -6,7 +6,6 @@ package metal
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 	"sync"
 	"testing"
 
@@ -18,23 +17,22 @@ import (
 func Test_NewBuffer(t *testing.T) {
 
 	// Invalid configuration (no elements).
-	bufferId, buffer, err := NewBuffer[int](0)
+	bufferId, buffer, err := NewBuffer[int32](0)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer)
 
 	// Invalid configuration (negative elements).
-	bufferId, buffer, err = NewBuffer[int](-1)
+	bufferId, buffer, err = NewBuffer[int32](-1)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer)
 
-	testNewBuffer(t, func(i int) bool { return i%2 == 1 })
+	// Test the primitive types that satisfy the BufferType constraint.
 	testNewBuffer(t, func(i int) byte { return byte(i) })
 	testNewBuffer(t, func(i int) rune { return rune(i) })
-	testNewBuffer(t, func(i int) string { return strconv.Itoa(i) })
 	testNewBuffer(t, func(i int) uint8 { return uint8(i) })
 	testNewBuffer(t, func(i int) uint16 { return uint16(i) })
 	testNewBuffer(t, func(i int) uint32 { return uint32(i) })
@@ -43,27 +41,38 @@ func Test_NewBuffer(t *testing.T) {
 	testNewBuffer(t, func(i int) int16 { return int16(i) })
 	testNewBuffer(t, func(i int) int32 { return int32(i) })
 	testNewBuffer(t, func(i int) int64 { return int64(i) })
-	testNewBuffer(t, func(i int) uint { return uint(i) })
-	testNewBuffer(t, func(i int) int { return i })
-	testNewBuffer(t, func(i int) uintptr { return uintptr(i) })
-	testNewBuffer(t, func(i int) *int { return &i })
 	testNewBuffer(t, func(i int) float32 { return float32(i) })
 	testNewBuffer(t, func(i int) float64 { return float64(i) })
-	testNewBuffer(t, func(i int) complex64 { return complex(float32(i), 0) })
-	testNewBuffer(t, func(i int) complex128 { return complex(float64(i), 0) })
-	testNewBuffer(t, func(i int) [3]int { return [3]int{i + 1, i + 2, i + 3} })
-	testNewBuffer(t, func(i int) []int { return []int{i + 1, i + 2, i + 3} })
-	testNewBuffer(t, func(i int) map[int]int { return map[int]int{i: i + 1} })
 
-	type MyStruct struct {
-		i int
-		s string
-	}
-	testNewBuffer(t, func(i int) MyStruct { return MyStruct{i, strconv.Itoa(i)} })
+	// Test custom types that satisfy the BufferType constraint.
+	type MyByte byte
+	testNewBuffer(t, func(i int) MyByte { return MyByte(i) })
+	type MyRune rune
+	testNewBuffer(t, func(i int) MyRune { return MyRune(i) })
+	type MyUint8 uint8
+	testNewBuffer(t, func(i int) MyUint8 { return MyUint8(i) })
+	type MyUint16 uint16
+	testNewBuffer(t, func(i int) MyUint16 { return MyUint16(i) })
+	type MyUint32 uint32
+	testNewBuffer(t, func(i int) MyUint32 { return MyUint32(i) })
+	type MyUint64 uint64
+	testNewBuffer(t, func(i int) MyUint64 { return MyUint64(i) })
+	type MyInt8 int8
+	testNewBuffer(t, func(i int) MyInt8 { return MyInt8(i) })
+	type MyInt16 int16
+	testNewBuffer(t, func(i int) MyInt16 { return MyInt16(i) })
+	type MyInt32 int32
+	testNewBuffer(t, func(i int) MyInt32 { return MyInt32(i) })
+	type MyInt64 int64
+	testNewBuffer(t, func(i int) MyInt64 { return MyInt64(i) })
+	type MyFloat32 float32
+	testNewBuffer(t, func(i int) MyFloat32 { return MyFloat32(i) })
+	type MyFloat64 float64
+	testNewBuffer(t, func(i int) MyFloat64 { return MyFloat64(i) })
 }
 
 // testNewBuffer is a helper to test buffer creation for a variety of types.
-func testNewBuffer[T any](t *testing.T, converter func(int) T) {
+func testNewBuffer[T BufferType](t *testing.T, converter func(int) T) {
 	var a T
 	t.Run(fmt.Sprintf("%T", a), func(t *testing.T) {
 
@@ -128,7 +137,7 @@ func Test_ThreadSafe(t *testing.T) {
 		go func() {
 			wg.Wait()
 
-			bufferId, _, err := NewBuffer[int](length)
+			bufferId, _, err := NewBuffer[int32](length)
 			require.Nil(t, err, "Unable to create metal buffer: %s", err)
 
 			dataCh <- bufferId

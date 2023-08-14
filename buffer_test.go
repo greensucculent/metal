@@ -69,10 +69,9 @@ func testNewBuffer[T any](t *testing.T, converter func(int) T) {
 
 		bufferId, buffer, err := NewBuffer[T](10)
 		require.Nil(t, err, "Unable to create metal buffer: %s", err)
-		require.Equal(t, BufferId(nextMetalId), bufferId)
+		require.True(t, validId(bufferId))
 		require.Len(t, buffer, 10)
 		require.Equal(t, len(buffer), cap(buffer))
-		nextMetalId++
 
 		// Test that every item in the buffer has its zero value.
 		for i := range buffer {
@@ -148,6 +147,6 @@ func Test_ThreadSafe(t *testing.T) {
 		require.False(t, ok)
 		idMap[bufferId] = struct{}{}
 
-		nextMetalId++
+		addId()
 	}
 }

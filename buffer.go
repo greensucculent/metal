@@ -67,7 +67,7 @@ func NewBuffer[T any](numElems int) (BufferId, []T, error) {
 	return BufferId(bufferId), toSlice[T](newBuffer, numElems), nil
 }
 
-// Valid checks whether or not the BufferId is valid and can be used to run a computational process
+// Valid checks whether or not the buffer Id is valid and can be used to run a computational process
 // on the GPU.
 func (id BufferId) Valid() bool {
 	return id > 0

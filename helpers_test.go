@@ -301,6 +301,117 @@ func Test_toSlice(t *testing.T) {
 	})
 }
 
+// Test_fold tests that fold correctly portions up slices of varying lengths.
+func Test_fold(t *testing.T) {
+	list := []int{1, 2, 3, 4, 5, 6, 7, 8}
+
+	// Test that fold returns nil when given a nil or empty list.
+	require.Nil(t, fold[int](nil, 10))
+	require.Nil(t, fold([]int{}, 10))
+
+	// Test that fold returns nil when the length is not a positive number.
+	require.Nil(t, fold(list, -1))
+	require.Nil(t, fold(list, 0))
+
+	// Test that fold returns nil when the length does not evenly divide the list.
+	require.Nil(t, fold(list, 3))
+
+	// Test running fold on a number of lists of different types, and also test that the output is
+	// just a wrapper around the input and not new memory.
+
+	input1 := []int{1, 2, 3, 4}
+	want1a := [][]int{{1, 2}, {3, 4}}
+	have1 := fold(input1, 2)
+	require.Equal(t, want1a, have1)
+	for i := range have1 {
+		require.Equal(t, 2, cap(have1[i]))
+	}
+
+	for i := range input1 {
+		input1[i] = i + 11
+	}
+	want1b := [][]int{{11, 12}, {13, 14}}
+	require.Equal(t, want1b, have1)
+	for i := range have1 {
+		require.Equal(t, 2, cap(have1[i]))
+	}
+
+	input2 := []float32{1, 2, 3, 4, 5, 6, 7, 8}
+	want2a := [][]float32{{1, 2, 3, 4}, {5, 6, 7, 8}}
+	have2 := fold(input2, 2)
+	require.Equal(t, want2a, have2)
+	for i := range have2 {
+		require.Equal(t, 4, cap(have2[i]))
+	}
+
+	for i := range input2 {
+		input2[i] = float32(i + 11)
+	}
+	want2b := [][]float32{{11, 12, 13, 14}, {15, 16, 17, 18}}
+	require.Equal(t, want2b, have2)
+	for i := range have2 {
+		require.Equal(t, 4, cap(have2[i]))
+	}
+
+	input3 := []int8{1, 2, 3, 4, 5, 6, 7}
+	want3a := [][]int8{{1, 2, 3, 4, 5, 6, 7}}
+	have3 := fold(input3, 1)
+	require.Equal(t, want3a, have3)
+	for i := range have3 {
+		require.Equal(t, 7, cap(have3[i]))
+	}
+
+	for i := range input3 {
+		input3[i] = int8(i + 11)
+	}
+	want3b := [][]int8{{11, 12, 13, 14, 15, 16, 17}}
+	require.Equal(t, want3b, have3)
+	for i := range have3 {
+		require.Equal(t, 7, cap(have3[i]))
+	}
+
+	input4 := []int8{1, 2, 3, 4, 5, 6, 7}
+	want4a := [][]int8{{1}, {2}, {3}, {4}, {5}, {6}, {7}}
+	have4 := fold(input4, 7)
+	require.Equal(t, want4a, have4)
+	for i := range have4 {
+		require.Equal(t, 1, cap(have4[i]))
+	}
+
+	for i := range input4 {
+		input4[i] = int8(i + 11)
+	}
+	want4b := [][]int8{{11}, {12}, {13}, {14}, {15}, {16}, {17}}
+	require.Equal(t, want4b, have4)
+	for i := range have4 {
+		require.Equal(t, 1, cap(have4[i]))
+	}
+
+	input5 := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
+	want5a := [][]uint64{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11, 12}, {13, 14, 15}, {16, 17, 18}, {19, 20, 21}, {22, 23, 24}}
+	have5a := fold(input5, 8)
+	require.Equal(t, want5a, have5a)
+	for i := range have5a {
+		require.Equal(t, 3, cap(have5a[i]))
+	}
+
+	want5b := [][][]uint64{{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11, 12}}, {{13, 14, 15}, {16, 17, 18}, {19, 20, 21}, {22, 23, 24}}}
+	have5b := fold(have5a, 2)
+	require.Equal(t, want5b, have5b)
+	for i := range have5b {
+		require.Equal(t, 4, cap(have5b[i]))
+		for j := range have5b[i] {
+			require.Equal(t, 3, cap(have5b[i][j]))
+		}
+	}
+
+	for i := range input5 {
+		input5[i] = uint64(i + 11)
+	}
+	want5c := [][][]uint64{{{11, 12, 13}, {14, 15, 16}, {17, 18, 19}, {20, 21, 22}}, {{23, 24, 25}, {26, 27, 28}, {29, 30, 31}, {32, 33, 34}}}
+	require.Equal(t, want5c, have5b)
+}
+
 // Test_metalErrToError tests that metalErrToError returns a go error that wraps a metal error.
 func Test_metalErrToError(t *testing.T) {
 	type test struct {

@@ -42,6 +42,24 @@ func toSlice[T any](data unsafe.Pointer, numElems int) []T {
 	return s
 }
 
+// fold folds a 1-dimensional slice of N items into a 2-dimensional slice of length x (N/length)
+// items. length must equally divide items. All sub-slices in the returned slice have a capacity
+// equal to N/length.
+func fold[T any](items []T, length int) [][]T {
+	if len(items) == 0 || length < 1 || len(items)%length != 0 {
+		return nil
+	}
+
+	width := len(items) / length
+
+	plane := make([][]T, 0, length)
+	for start := 0; start < len(items); start += width {
+		plane = append(plane, items[start:start+width:start+width])
+	}
+
+	return plane
+}
+
 // metalErrToError wraps the metal error metalErr inside wrap.
 func metalErrToError(metalErr *C.char, wrap string) error {
 	switch {

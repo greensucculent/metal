@@ -6,6 +6,7 @@ package metal
 import (
 	_ "embed"
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 	"testing"
@@ -43,9 +44,9 @@ func addId() {
 	nextMetalId++
 }
 
-// Test_Function_NewFunction tests that NewFunction either creates a new metal function or returns
+// Test_FunctionId_NewFunction tests that NewFunction either creates a new metal function or returns
 // the expected message, depending on the conditions of each scenario.
-func Test_Function_NewFunction(t *testing.T) {
+func Test_FunctionId_NewFunction(t *testing.T) {
 	type scenario struct {
 		source   string
 		function string
@@ -101,7 +102,7 @@ func Test_Function_NewFunction(t *testing.T) {
 			if scenario.wantErr == "" {
 				require.Nil(t, err, "Unable to create metal function: %s", err)
 				require.True(t, functionId.Valid())
-				addId()
+				require.True(t, validId(functionId))
 			} else {
 				require.NotNil(t, err)
 				require.Equal(t, scenario.wantErr, err.Error())
@@ -109,41 +110,6 @@ func Test_Function_NewFunction(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Test_Function_Valid tests that Function's Valid method correctly identifies a valid function.
-func Test_Function_Valid(t *testing.T) {
-	// A valid Function has a positive Id. Let's run through a bunch of numbers and test that Valid
-	// always reports the correct status.
-	for i := -100_00; i <= 100_000; i++ {
-		var function FunctionId = FunctionId(i)
-
-		if i > 0 {
-			require.True(t, function.Valid())
-		} else {
-			require.False(t, function.Valid())
-		}
-	}
-}
-
-// Test_Function_Id tests that Function's id field has the correct value for a variety of scenarios.
-func Test_Function_Id(t *testing.T) {
-	// Invalid configuration: Id should be 0.
-	functionId, err := NewFunction("", "")
-	require.NotNil(t, err)
-	require.Equal(t, FunctionId(0), functionId)
-
-	// Valid configuration: Id should be equal to the next metal Id, indicating a metal function was
-	// created and added to the cache successfully.
-	functionId, err = NewFunction(sourceTransfer, "transfer")
-	require.Nil(t, err)
-	require.True(t, validId(functionId))
-
-	// Valid configuration: Id should be equal to the next metal Id, indicating a metal function was
-	// created and added to the cache successfully.
-	functionId, err = NewFunction(sourceTransfer, "transfer")
-	require.Nil(t, err)
-	require.True(t, validId(functionId))
 
 	// Create a range of new functions and test that the returned function Id is always incremented
 	// by 1.
@@ -154,8 +120,23 @@ func Test_Function_Id(t *testing.T) {
 	}
 }
 
-// Test_Function_Name tests that FunctionId's String method returns the correct function name.
-func Test_Function_Name(t *testing.T) {
+// Test_FunctionId_Valid tests that FunctionId's Valid method correctly identifies a valid function Id.
+func Test_FunctionId_Valid(t *testing.T) {
+	// A valid function Id has a positive value. Let's run through a bunch of numbers and test that
+	// Valid always reports the correct status.
+	for i := -100_00; i <= 100_000; i++ {
+		function := FunctionId(i)
+
+		if i > 0 {
+			require.True(t, function.Valid())
+		} else {
+			require.False(t, function.Valid())
+		}
+	}
+}
+
+// Test_FunctionId_String tests that FunctionId's String method returns the correct function name.
+func Test_FunctionId_String(t *testing.T) {
 	// Test an uninitialized function.
 	var function FunctionId
 	require.Equal(t, "", function.String())
@@ -170,13 +151,13 @@ func Test_Function_Name(t *testing.T) {
 	functionId, err = NewFunction(sourceTransfer, "transfer")
 	require.Nil(t, err)
 	require.True(t, functionId.Valid())
+	require.True(t, validId(functionId))
 	require.Equal(t, "transfer", functionId.String())
-	addId()
 }
 
-// Test_Function_ThreadSafe tests that NewFunction can handle multiple parallel invocations and
-// still return the correct Id.
-func Test_Function_ThreadSafe(t *testing.T) {
+// Test_FunctionId_NewFunction_threadSafe tests that NewFunction can handle multiple parallel invocations and
+// still return the correct function Id.
+func Test_FunctionId_NewFunction_threadSafe(t *testing.T) {
 	type data struct {
 		functionId FunctionId
 		wantName   string
@@ -228,13 +209,25 @@ func Test_Function_ThreadSafe(t *testing.T) {
 
 		addId()
 	}
+
+	// Check that we received every Id in the sequence.
+	idList := make([]FunctionId, 0, len(idMap))
+	for functionId := range idMap {
+		idList = append(idList, functionId)
+	}
+	sort.Slice(idList, func(i, j int) bool { return idList[i] < idList[j] })
+	require.Len(t, idList, numIter)
+	for i := 0; i < numIter; i++ {
+		require.Equal(t, nextMetalId-numIter+i, int(idList[i]))
+	}
 }
 
-// Test_Function_Run_invalid tests that Function's Run method correctly handles invalid parameters.
-func Test_Function_Run_invalid(t *testing.T) {
+// Test_FunctionId_Run_invalid tests that FunctionId's Run method correctly handles invalid
+// parameters.
+func Test_FunctionId_Run_invalid(t *testing.T) {
 	functionId, err := NewFunction(sourceNoop, "noop")
 	require.Nil(t, err)
-	addId()
+	require.True(t, validId(functionId))
 
 	// Test calling Run with an invalid (uninitialized) Function.
 	var emptyFunction FunctionId
@@ -242,7 +235,7 @@ func Test_Function_Run_invalid(t *testing.T) {
 	require.NotNil(t, err)
 	require.Equal(t, "Unable to run metal function: Failed to retrieve function", err.Error())
 
-	// Test calling Run with a BufferId for a buffer that doesn't exist.
+	// Test calling Run with a buffer Id for a buffer that doesn't exist.
 	err = functionId.Run(Grid{}, BufferId(10000))
 	require.NotNil(t, err)
 	require.Equal(t, "Unable to run metal function: Failed to retrieve buffer 1/1 using Id 10000", err.Error())
@@ -252,24 +245,24 @@ func Test_Function_Run_invalid(t *testing.T) {
 	require.Nil(t, err)
 }
 
-// Test_Function_Run_1D tests that Function's Run method correctly runs a 1-dimensional
+// Test_FunctionId_Run_1D tests that FunctionId's Run method correctly runs a 1-dimensional
 // computational process for small and large input sizes.
-func Test_Function_Run_1D(t *testing.T) {
+func Test_FunctionId_Run_1D(t *testing.T) {
 	for _, numElems := range []int{100, 100_000, 100_000_000} {
 		t.Run(strconv.Itoa(numElems), func(t *testing.T) {
 
 			// Set up a metal function that simply transfers all inputs to the outputs.
 			functionId, err := NewFunction(sourceTransfer, "transfer")
 			require.Nil(t, err)
-			addId()
+			require.True(t, validId(functionId))
 
 			// Set up an input and output buffer.
-			inputId, input, err := NewBuffer[float32](numElems)
+			inputId, input, err := NewBuffer1D[float32](numElems)
 			require.Nil(t, err)
-			addId()
-			outputId, output, err := NewBuffer[float32](numElems)
+			require.True(t, validId(inputId))
+			outputId, output, err := NewBuffer1D[float32](numElems)
 			require.Nil(t, err)
-			addId()
+			require.True(t, validId(outputId))
 
 			// Set some initial values for the input.
 			for i := range input {

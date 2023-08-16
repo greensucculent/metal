@@ -29,90 +29,120 @@ func Test_BufferId_Valid(t *testing.T) {
 	}
 }
 
+// Test_newBuffer_invalid tests that newBuffer handles invalid arguments correctly.
+func Test_newBuffer_invalid(t *testing.T) {
+	// No dimensions
+	bufferId, buffer, err := newBuffer[float32]()
+	require.NotNil(t, err)
+	require.Equal(t, "Missing dimension(s)", err.Error())
+	require.Equal(t, BufferId(0), bufferId)
+	require.Nil(t, buffer)
+
+	// Negative dimension
+	for numDims := 1; numDims < 10; numDims++ {
+		for dimIndex := 0; dimIndex < numDims; dimIndex++ {
+			dims := make([]int, numDims)
+			for i := range dims {
+				if i == dimIndex {
+					dims[i] = -1
+				} else {
+					dims[i] = 1
+				}
+			}
+
+			bufferId, buffer, err := newBuffer[float32](dims...)
+			require.NotNil(t, err)
+			require.Equal(t, "Invalid dimension", err.Error())
+			require.Equal(t, BufferId(0), bufferId)
+			require.Nil(t, buffer)
+		}
+	}
+}
+
 // Test_NewBuffer_invalid tests that each of the NewBuffer implementations handles invalid
 // arguments correctly.
 func Test_NewBuffer_invalid(t *testing.T) {
 	// 1D: no width
 	bufferId, buffer1D, err := NewBuffer1D[int32](0)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer1D)
 
 	// 1D: negative width
 	bufferId, buffer1D, err = NewBuffer1D[int32](-1)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer1D)
 
 	// 2D: no width.
 	bufferId, buffer2D, err := NewBuffer2D[int32](0, 10)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer2D)
 
 	// 2D: no height.
 	bufferId, buffer2D, err = NewBuffer2D[int32](10, 0)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer2D)
 
 	// 2D: negative width.
 	bufferId, buffer2D, err = NewBuffer2D[int32](-1, 10)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer2D)
 
 	// 2D: negative height.
 	bufferId, buffer2D, err = NewBuffer2D[int32](10, -1)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer2D)
 
 	// 3D: no width.
 	bufferId, buffer3D, err := NewBuffer3D[int32](0, 10, 10)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
 	// 3D: no height.
 	bufferId, buffer3D, err = NewBuffer3D[int32](10, 0, 10)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
 	// 3D: no depth.
 	bufferId, buffer3D, err = NewBuffer3D[int32](10, 10, 0)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
 	// 3D: negative width.
 	bufferId, buffer3D, err = NewBuffer3D[int32](-1, 10, 10)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
 	// 3D: negative height.
 	bufferId, buffer3D, err = NewBuffer3D[int32](10, -1, 10)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
 	// 3D: negative depth.
 	bufferId, buffer3D, err = NewBuffer3D[int32](10, 10, -1)
 	require.NotNil(t, err)
-	require.Equal(t, "Invalid number of elements", err.Error())
+	require.Equal(t, "Invalid dimension", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 }
@@ -165,9 +195,43 @@ func Test_NewBuffer(t *testing.T) {
 func testNewBuffer[T BufferType](t *testing.T, converter func(int) T) {
 	var a T
 
-	// Test a 1-dimensional buffer.
-	t.Run(fmt.Sprintf("%T_1D", a), func(t *testing.T) {
+	// Test the underlying process.
+	t.Run(fmt.Sprintf("%T_newBuffer", a), func(t *testing.T) {
+		numDims := rand.Intn(10) + 1
+		numBytes := 1
+		dims := make([]int, numDims)
+		for i := range dims {
+			dim := rand.Intn(5) + 1
+			numBytes *= dim
+			dims[i] = dim
+		}
 
+		bufferId, buffer, err := newBuffer[T](dims...)
+		require.Nil(t, err, "Unable to create metal buffer: %s", err)
+		require.True(t, validId(bufferId))
+		require.Len(t, buffer, numBytes)
+		require.Equal(t, cap(buffer), numBytes)
+
+		// Test that every item in the buffer has its zero value.
+		for i := range buffer {
+			require.True(t, reflect.ValueOf(buffer[i]).IsZero())
+		}
+
+		// Test that we can write to every item in the buffer.
+		require.NotPanics(t, func() {
+			for i := range buffer {
+				buffer[i] = converter(i)
+			}
+		})
+
+		// Test that every item retained its value.
+		for i := range buffer {
+			require.Equal(t, converter(i), buffer[i])
+		}
+	})
+
+	// Test a 1-dimensional buffer.
+	t.Run(fmt.Sprintf("%T_NewBuffer1D", a), func(t *testing.T) {
 		width := rand.Intn(20) + 1
 
 		bufferId, buffer, err := NewBuffer1D[T](width)
@@ -195,8 +259,7 @@ func testNewBuffer[T BufferType](t *testing.T, converter func(int) T) {
 	})
 
 	// Test a 2-dimensional buffer.
-	t.Run(fmt.Sprintf("%T_2D", a), func(t *testing.T) {
-
+	t.Run(fmt.Sprintf("%T_NewBuffer2D", a), func(t *testing.T) {
 		width := rand.Intn(20) + 1
 		height := rand.Intn(20) + 1
 
@@ -235,8 +298,7 @@ func testNewBuffer[T BufferType](t *testing.T, converter func(int) T) {
 	})
 
 	// Test a 3-dimensional buffer.
-	t.Run(fmt.Sprintf("%T_3D", a), func(t *testing.T) {
-
+	t.Run(fmt.Sprintf("%T_NewBuffer3D", a), func(t *testing.T) {
 		width := rand.Intn(20) + 1
 		height := rand.Intn(20) + 1
 		depth := rand.Intn(20) + 1

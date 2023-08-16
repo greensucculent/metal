@@ -94,7 +94,7 @@ func newBuffer[T BufferType](dimLens ...int) (BufferId, []T, error) {
 	}
 	for _, dimLen := range dimLens {
 		if dimLen < 1 {
-			return 0, nil, errors.New("Invalid number of elements")
+			return 0, nil, errors.New("Invalid dimension")
 		}
 	}
 

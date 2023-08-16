@@ -37,53 +37,53 @@ type BufferType interface {
 
 // NewBuffer1D allocates a 1-dimensional block of memory that is accessible to both the CPU and GPU.
 // It returns a unique Id for the buffer and a slice that wraps the new memory and has a length and
-// capacity equal to length.
+// capacity equal to width.
 //
 // The Id is used to reference the buffer as an argument for the metal function.
 //
 // Only the contents of the slice should be modified. Its length and capacity and the pointer to its
 // underlying array should not be altered.
-func NewBuffer1D[T BufferType](length int) (BufferId, []T, error) {
-	return newBuffer[T](length)
+func NewBuffer1D[T BufferType](width int) (BufferId, []T, error) {
+	return newBuffer[T](width)
 }
 
 // NewBuffer2D allocates a 2-dimensional block of memory that is accessible to both the CPU and GPU.
 // It returns a unique Id for the buffer and a slice that wraps the new memory and has a length and
-// capacity equal to length. Each element in the slice is another slice with a length equal to
-// width.
+// capacity equal to width. Each element in the slice is another slice with a length equal to
+// height.
 //
 // The Id is used to reference the buffer as an argument for the metal function.
 //
 // Only the contents of the slices should be modified. Their lengths and capacities and the pointers
 // to their underlying arrays should not be altered.
-func NewBuffer2D[T BufferType](length, width int) (BufferId, [][]T, error) {
-	bufferId, b1, err := newBuffer[T](length, width)
+func NewBuffer2D[T BufferType](width, height int) (BufferId, [][]T, error) {
+	bufferId, b1, err := newBuffer[T](width, height)
 	if err != nil {
 		return 0, nil, err
 	}
 
-	b2 := fold(b1, length)
+	b2 := fold(b1, width)
 
 	return bufferId, b2, nil
 }
 
 // NewBuffer3D allocates a 3-dimensional block of memory that is accessible to both the CPU and GPU.
 // It returns a unique Id for the buffer and a slice that wraps the new memory and has a length and
-// capacity equal to length. Each element in the slice is another slice with a length equal to
-// width, and each of their elements is in turn another slice with a length equal to height.
+// capacity equal to width. Each element in the slice is another slice with a length equal to
+// height, and each of their elements is in turn another slice with a length equal to depth.
 //
 // The Id is used to reference the buffer as an argument for the metal function.
 //
 // Only the contents of the slices should be modified. Their lengths and capacities and the pointers
 // to their underlying arrays should not be altered.
-func NewBuffer3D[T BufferType](length, width, height int) (BufferId, [][][]T, error) {
-	bufferId, b1, err := newBuffer[T](length, width, height)
+func NewBuffer3D[T BufferType](width, height, depth int) (BufferId, [][][]T, error) {
+	bufferId, b1, err := newBuffer[T](width, height, depth)
 	if err != nil {
 		return 0, nil, err
 	}
 
-	b2 := fold(b1, length*width)
-	b3 := fold(b2, length)
+	b2 := fold(b1, width*height)
+	b3 := fold(b2, width)
 
 	return bufferId, b3, nil
 }

@@ -32,84 +32,84 @@ func Test_BufferId_Valid(t *testing.T) {
 // Test_NewBuffer_invalid tests that each of the NewBuffer implementations handles invalid
 // arguments correctly.
 func Test_NewBuffer_invalid(t *testing.T) {
-	// 1D: no length
+	// 1D: no width
 	bufferId, buffer1D, err := NewBuffer1D[int32](0)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer1D)
 
-	// 1D: negative length
+	// 1D: negative width
 	bufferId, buffer1D, err = NewBuffer1D[int32](-1)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer1D)
 
-	// 2D: no length.
+	// 2D: no width.
 	bufferId, buffer2D, err := NewBuffer2D[int32](0, 10)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer2D)
 
-	// 2D: no width.
+	// 2D: no height.
 	bufferId, buffer2D, err = NewBuffer2D[int32](10, 0)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer2D)
 
-	// 2D: negative length.
+	// 2D: negative width.
 	bufferId, buffer2D, err = NewBuffer2D[int32](-1, 10)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer2D)
 
-	// 2D: negative width.
+	// 2D: negative height.
 	bufferId, buffer2D, err = NewBuffer2D[int32](10, -1)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer2D)
 
-	// 3D: no length.
+	// 3D: no width.
 	bufferId, buffer3D, err := NewBuffer3D[int32](0, 10, 10)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
-	// 3D: no width.
+	// 3D: no height.
 	bufferId, buffer3D, err = NewBuffer3D[int32](10, 0, 10)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
-	// 3D: no height.
+	// 3D: no depth.
 	bufferId, buffer3D, err = NewBuffer3D[int32](10, 10, 0)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
-	// 3D: negative length.
+	// 3D: negative width.
 	bufferId, buffer3D, err = NewBuffer3D[int32](-1, 10, 10)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
-	// 3D: negative width.
+	// 3D: negative height.
 	bufferId, buffer3D, err = NewBuffer3D[int32](10, -1, 10)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
 	require.Equal(t, BufferId(0), bufferId)
 	require.Nil(t, buffer3D)
 
-	// 3D: negative height.
+	// 3D: negative depth.
 	bufferId, buffer3D, err = NewBuffer3D[int32](10, 10, -1)
 	require.NotNil(t, err)
 	require.Equal(t, "Invalid number of elements", err.Error())
@@ -168,13 +168,13 @@ func testNewBuffer[T BufferType](t *testing.T, converter func(int) T) {
 	// Test a 1-dimensional buffer.
 	t.Run(fmt.Sprintf("%T_1D", a), func(t *testing.T) {
 
-		length := rand.Intn(20) + 1
+		width := rand.Intn(20) + 1
 
-		bufferId, buffer, err := NewBuffer1D[T](length)
+		bufferId, buffer, err := NewBuffer1D[T](width)
 		require.Nil(t, err, "Unable to create metal buffer: %s", err)
 		require.True(t, validId(bufferId))
-		require.Len(t, buffer, length)
-		require.Equal(t, cap(buffer), length)
+		require.Len(t, buffer, width)
+		require.Equal(t, cap(buffer), width)
 
 		// Test that every item in the buffer has its zero value.
 		for i := range buffer {
@@ -197,17 +197,17 @@ func testNewBuffer[T BufferType](t *testing.T, converter func(int) T) {
 	// Test a 2-dimensional buffer.
 	t.Run(fmt.Sprintf("%T_2D", a), func(t *testing.T) {
 
-		length := rand.Intn(20) + 1
 		width := rand.Intn(20) + 1
+		height := rand.Intn(20) + 1
 
-		bufferId, buffer, err := NewBuffer2D[T](length, width)
+		bufferId, buffer, err := NewBuffer2D[T](width, height)
 		require.Nil(t, err, "Unable to create metal buffer: %s", err)
 		require.True(t, validId(bufferId))
-		require.Equal(t, length, len(buffer))
-		require.Equal(t, length, cap(buffer))
+		require.Equal(t, width, len(buffer))
+		require.Equal(t, width, cap(buffer))
 		for _, y := range buffer {
-			require.Equal(t, width, len(y))
-			require.Equal(t, width, cap(y))
+			require.Equal(t, height, len(y))
+			require.Equal(t, height, cap(y))
 		}
 
 		// Test that every item in the buffer has its zero value.
@@ -237,21 +237,21 @@ func testNewBuffer[T BufferType](t *testing.T, converter func(int) T) {
 	// Test a 3-dimensional buffer.
 	t.Run(fmt.Sprintf("%T_3D", a), func(t *testing.T) {
 
-		length := rand.Intn(20) + 1
 		width := rand.Intn(20) + 1
 		height := rand.Intn(20) + 1
+		depth := rand.Intn(20) + 1
 
-		bufferId, buffer, err := NewBuffer3D[T](length, width, height)
+		bufferId, buffer, err := NewBuffer3D[T](width, height, depth)
 		require.Nil(t, err, "Unable to create metal buffer: %s", err)
 		require.True(t, validId(bufferId))
-		require.Equal(t, length, len(buffer))
-		require.Equal(t, length, cap(buffer))
+		require.Equal(t, width, len(buffer))
+		require.Equal(t, width, cap(buffer))
 		for _, y := range buffer {
-			require.Equal(t, width, len(y))
-			require.Equal(t, width, cap(y))
+			require.Equal(t, height, len(y))
+			require.Equal(t, height, cap(y))
 			for _, z := range y {
-				require.Equal(t, height, len(z))
-				require.Equal(t, height, cap(z))
+				require.Equal(t, depth, len(z))
+				require.Equal(t, depth, cap(z))
 			}
 		}
 
@@ -300,9 +300,9 @@ func Test_NewBuffer_threadSafe(t *testing.T) {
 	// Prepare one goroutine to create a new buffer for each iteration.
 	for i := 0; i < numIter; i++ {
 		// Calculate the dimensions that could be used for this buffer.
-		length := rand.Intn(20) + 1
 		width := rand.Intn(20) + 1
 		height := rand.Intn(20) + 1
+		depth := rand.Intn(20) + 1
 
 		// Spin up a new goroutine. This will wait until all goroutines are ready to fire, then
 		// create a new metal buffer and send its Id back to the main thread.
@@ -313,11 +313,11 @@ func Test_NewBuffer_threadSafe(t *testing.T) {
 			var err error
 			switch i % 3 {
 			case 0:
-				bufferId, _, err = NewBuffer1D[int32](length)
+				bufferId, _, err = NewBuffer1D[int32](width)
 			case 1:
-				bufferId, _, err = NewBuffer2D[int32](length, width)
+				bufferId, _, err = NewBuffer2D[int32](width, height)
 			case 2:
-				bufferId, _, err = NewBuffer3D[int32](length, width, height)
+				bufferId, _, err = NewBuffer3D[int32](width, height, depth)
 			}
 			require.Nil(t, err, "Unable to create metal buffer: %s", err)
 
@@ -328,7 +328,7 @@ func Test_NewBuffer_threadSafe(t *testing.T) {
 		wg.Done()
 	}
 
-	// Check that each buffer's Id is unique.
+	// Test that each buffer's Id is unique.
 	idMap := make(map[BufferId]struct{})
 	for i := 0; i < numIter; i++ {
 		bufferId := <-dataCh
@@ -340,7 +340,7 @@ func Test_NewBuffer_threadSafe(t *testing.T) {
 		addId()
 	}
 
-	// Check that we received every Id in the sequence.
+	// Test that we received every Id in the sequence.
 	idList := make([]BufferId, 0, len(idMap))
 	for bufferId := range idMap {
 		idList = append(idList, bufferId)

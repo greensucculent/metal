@@ -42,19 +42,19 @@ func toSlice[T any](data unsafe.Pointer, numElems int) []T {
 	return s
 }
 
-// fold folds a 1-dimensional slice of N items into a 2-dimensional slice of length x (N/length)
-// items. length must equally divide items. All sub-slices in the returned slice have a capacity
-// equal to N/length.
-func fold[T any](items []T, length int) [][]T {
-	if len(items) == 0 || length < 1 || len(items)%length != 0 {
+// fold folds a 1-dimensional slice of N items into a 2-dimensional slice of width x (N/width)
+// items. width must equally divide items. All sub-slices in the returned slice have a capacity
+// equal to N/width.
+func fold[T any](items []T, width int) [][]T {
+	if len(items) == 0 || width < 1 || len(items)%width != 0 {
 		return nil
 	}
 
-	width := len(items) / length
+	height := len(items) / width
 
-	plane := make([][]T, 0, length)
-	for start := 0; start < len(items); start += width {
-		plane = append(plane, items[start:start+width:start+width])
+	plane := make([][]T, 0, width)
+	for start := 0; start < len(items); start += height {
+		plane = append(plane, items[start:start+height:start+height])
 	}
 
 	return plane

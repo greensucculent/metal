@@ -5,6 +5,7 @@ package metal
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"reflect"
 	"sort"
@@ -57,6 +58,20 @@ func Test_newBuffer_invalid(t *testing.T) {
 			require.Nil(t, buffer)
 		}
 	}
+
+	// Too many bytes when multiplied
+	bufferId, buffer, err = newBuffer[float32](100_000, 100_000, 100_000, 100_000)
+	require.NotNil(t, err)
+	require.Equal(t, "Exceeded maximum number of bytes", err.Error())
+	require.Equal(t, BufferId(0), bufferId)
+	require.Nil(t, buffer)
+
+	// Too many bytes in just one dimension
+	bufferId, buffer, err = newBuffer[float32](math.MaxInt32 + 1)
+	require.NotNil(t, err)
+	require.Equal(t, "Exceeded maximum number of bytes", err.Error())
+	require.Equal(t, BufferId(0), bufferId)
+	require.Nil(t, buffer)
 }
 
 // Test_NewBuffer_invalid tests that each of the NewBuffer implementations handles invalid
@@ -189,6 +204,15 @@ func Test_NewBuffer(t *testing.T) {
 	testNewBuffer(t, func(i int) MyFloat32 { return MyFloat32(i) })
 	type MyFloat64 float64
 	testNewBuffer(t, func(i int) MyFloat64 { return MyFloat64(i) })
+
+	// Maximum number of bytes
+	t.Run("maxSize_newBuffer", func(t *testing.T) {
+		bufferId, buffer, err := NewBuffer1D[byte](math.MaxInt32)
+		require.Nil(t, err, "Unable to create metal buffer: %s", err)
+		require.True(t, validId(bufferId))
+		require.Len(t, buffer, math.MaxInt32)
+		require.Equal(t, cap(buffer), math.MaxInt32)
+	})
 }
 
 // testNewBuffer is a helper to test buffer creation for a variety of types.

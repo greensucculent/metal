@@ -14,6 +14,7 @@ import "C"
 
 import (
 	"errors"
+	"math"
 	"unsafe"
 )
 
@@ -92,17 +93,22 @@ func newBuffer[T BufferType](dimLens ...int) (BufferId, []T, error) {
 	if len(dimLens) == 0 {
 		return 0, nil, errors.New("Missing dimension(s)")
 	}
+
+	// Calculate how many elements we'll need based on the dimensions provided, and also check that
+	// each dimension is valid and won't overflow the maximum bytes.
+	numElems := 1
+	numBytes := sizeof[T]()
 	for _, dimLen := range dimLens {
 		if dimLen < 1 {
 			return 0, nil, errors.New("Invalid dimension")
 		}
-	}
 
-	numElems := 1
-	for _, dimLen := range dimLens {
 		numElems *= dimLen
+		numBytes *= dimLen
+		if numBytes > math.MaxInt32 || numBytes < 0 {
+			return 0, nil, errors.New("Exceeded maximum number of bytes")
+		}
 	}
-	numBytes := sizeof[T]() * numElems
 
 	err := C.CString("")
 	defer C.free(unsafe.Pointer(err))

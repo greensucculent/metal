@@ -17,8 +17,16 @@ import (
 var (
 	//go:embed test/noop.metal
 	sourceNoop string
-	//go:embed test/transfer.metal
-	sourceTransfer string
+	//go:embed test/transfer1D.metal
+	sourceTransfer1D string
+	//go:embed test/transfer2D.metal
+	sourceTransfer2D string
+	//go:embed test/transfer3D.metal
+	sourceTransfer3D string
+	//go:embed test/power.metal
+	sourcePower string
+	//go:embed test/sine.metal
+	sourceSine string
 )
 
 var (
@@ -29,7 +37,7 @@ var (
 	nextMetalId = 1
 )
 
-// validId checks if the Id has the expected value.
+// validId tests that the Id has the expected value.
 func validId[T FunctionId | BufferId](id T) bool {
 	ok := int(id) == nextMetalId
 	if ok {
@@ -76,20 +84,20 @@ func Test_FunctionId_NewFunction(t *testing.T) {
 		},
 		{
 			// Valid source, no function name
-			source:   sourceTransfer,
+			source:   sourceTransfer1D,
 			function: "",
 			wantErr:  "Unable to set up metal function: Missing function name",
 		},
 		{
 			// Valid source, invalid function name
-			source:   sourceTransfer,
+			source:   sourceTransfer1D,
 			function: "invalid",
 			wantErr:  "Unable to set up metal function: Failed to find function 'invalid'",
 		},
 		{
 			// Valid source, valid function name
-			source:   sourceTransfer,
-			function: "transfer",
+			source:   sourceTransfer1D,
+			function: "transfer1D",
 		},
 	}
 
@@ -98,7 +106,7 @@ func Test_FunctionId_NewFunction(t *testing.T) {
 			// Try to create a new metal function with the provided source and function name.
 			functionId, err := NewFunction(scenario.source, scenario.function)
 
-			// Check that the scenario's expected error and the actual error line up.
+			// Test that the scenario's expected error and the actual error line up.
 			if scenario.wantErr == "" {
 				require.Nil(t, err, "Unable to create metal function: %s", err)
 				require.True(t, functionId.Valid())
@@ -114,7 +122,7 @@ func Test_FunctionId_NewFunction(t *testing.T) {
 	// Create a range of new functions and test that the returned function Id is always incremented
 	// by 1.
 	for i := 0; i < 100; i++ {
-		functionId, err := NewFunction(sourceTransfer, "transfer")
+		functionId, err := NewFunction(sourceTransfer1D, "transfer1D")
 		require.Nil(t, err)
 		require.True(t, validId(functionId))
 	}
@@ -148,11 +156,11 @@ func Test_FunctionId_String(t *testing.T) {
 	require.Equal(t, "", functionId.String())
 
 	// Test a valid function.
-	functionId, err = NewFunction(sourceTransfer, "transfer")
+	functionId, err = NewFunction(sourceTransfer1D, "transfer1D")
 	require.Nil(t, err)
 	require.True(t, functionId.Valid())
 	require.True(t, validId(functionId))
-	require.Equal(t, "transfer", functionId.String())
+	require.Equal(t, "transfer1D", functionId.String())
 }
 
 // Test_FunctionId_NewFunction_threadSafe tests that NewFunction can handle multiple parallel invocations and
@@ -195,7 +203,7 @@ func Test_FunctionId_NewFunction_threadSafe(t *testing.T) {
 		wg.Done()
 	}
 
-	// Check that each function Id is unique and references the correct function.
+	// Test that each function Id is unique and references the correct function.
 	idMap := make(map[FunctionId]struct{})
 	for i := 0; i < numIter; i++ {
 		data := <-dataCh
@@ -210,7 +218,7 @@ func Test_FunctionId_NewFunction_threadSafe(t *testing.T) {
 		addId()
 	}
 
-	// Check that we received every Id in the sequence.
+	// Test that we received every Id in the sequence.
 	idList := make([]FunctionId, 0, len(idMap))
 	for functionId := range idMap {
 		idList = append(idList, functionId)
@@ -248,19 +256,19 @@ func Test_FunctionId_Run_invalid(t *testing.T) {
 // Test_FunctionId_Run_1D tests that FunctionId's Run method correctly runs a 1-dimensional
 // computational process for small and large input sizes.
 func Test_FunctionId_Run_1D(t *testing.T) {
-	for _, numElems := range []int{100, 100_000, 100_000_000} {
-		t.Run(strconv.Itoa(numElems), func(t *testing.T) {
+	for _, width := range []int{100, 100_000, 100_000_000} {
+		t.Run(strconv.Itoa(width), func(t *testing.T) {
 
 			// Set up a metal function that simply transfers all inputs to the outputs.
-			functionId, err := NewFunction(sourceTransfer, "transfer")
+			functionId, err := NewFunction(sourceTransfer1D, "transfer1D")
 			require.Nil(t, err)
 			require.True(t, validId(functionId))
 
-			// Set up an input and output buffer.
-			inputId, input, err := NewBuffer1D[float32](numElems)
+			// Set up input and output buffers.
+			inputId, input, err := NewBuffer1D[float32](width)
 			require.Nil(t, err)
 			require.True(t, validId(inputId))
-			outputId, output, err := NewBuffer1D[float32](numElems)
+			outputId, output, err := NewBuffer1D[float32](width)
 			require.Nil(t, err)
 			require.True(t, validId(outputId))
 
@@ -271,7 +279,7 @@ func Test_FunctionId_Run_1D(t *testing.T) {
 
 			// Run the function and test that all values were transferred from the input to the output.
 			require.NotEqual(t, input, output)
-			err = functionId.Run(Grid{X: numElems}, inputId, outputId)
+			err = functionId.Run(Grid{X: width}, inputId, outputId)
 			require.Nil(t, err)
 			require.Equal(t, input, output)
 
@@ -280,7 +288,108 @@ func Test_FunctionId_Run_1D(t *testing.T) {
 				input[i] = float32(i * i)
 			}
 			require.NotEqual(t, input, output)
-			err = functionId.Run(Grid{X: numElems}, inputId, outputId)
+			err = functionId.Run(Grid{X: width}, inputId, outputId)
+			require.Nil(t, err)
+			require.Equal(t, input, output)
+		})
+	}
+}
+
+// Test_FunctionId_Run_2D tests that FunctionId's Run method correctly runs a 2-dimensional
+// computational process for small and large input sizes.
+func Test_FunctionId_Run_2D(t *testing.T) {
+	for _, width := range []int{10, 100, 10000} {
+		height := width * 2
+
+		t.Run(strconv.Itoa(width), func(t *testing.T) {
+
+			// Set up a metal function that simply transfers all inputs to the outputs.
+			functionId, err := NewFunction(sourceTransfer2D, "transfer2D")
+			require.Nil(t, err)
+			require.True(t, validId(functionId))
+
+			// Set up input and output buffers.
+			inputId, input, err := NewBuffer2D[float32](width, height)
+			require.Nil(t, err)
+			require.True(t, validId(inputId))
+			outputId, output, err := NewBuffer2D[float32](width, height)
+			require.Nil(t, err)
+			require.True(t, validId(outputId))
+
+			// Set some initial values for the input.
+			for i := range input {
+				for j := range input[i] {
+					input[i][j] = float32(i*height + j)
+				}
+			}
+
+			// Run the function and test that all values were transferred from the input to the output.
+			require.NotEqual(t, input, output)
+			err = functionId.Run(Grid{X: width, Y: height}, inputId, outputId)
+			require.Nil(t, err)
+			require.Equal(t, input, output)
+
+			// Set some different values in the input and run the function again.
+			for i := range input {
+				for j := range input[i] {
+					input[i][j] = float32(i*height*2 + j + 100)
+				}
+			}
+			require.NotEqual(t, input, output)
+			err = functionId.Run(Grid{X: width, Y: height}, inputId, outputId)
+			require.Nil(t, err)
+			require.Equal(t, input, output)
+		})
+	}
+}
+
+// Test_FunctionId_Run_3D tests that FunctionId's Run method correctly runs a 3-dimensional
+// computational process for small and large input sizes.
+func Test_FunctionId_Run_3D(t *testing.T) {
+	for _, width := range []int{10, 100, 250} {
+		height := width * 2
+		depth := width * 4
+
+		t.Run(strconv.Itoa(width), func(t *testing.T) {
+
+			// Set up a metal function that simply transfers all inputs to the outputs.
+			functionId, err := NewFunction(sourceTransfer3D, "transfer3D")
+			require.Nil(t, err)
+			require.True(t, validId(functionId))
+
+			// Set up input and output buffers.
+			inputId, input, err := NewBuffer3D[float32](width, height, depth)
+			require.Nil(t, err)
+			require.True(t, validId(inputId))
+			outputId, output, err := NewBuffer3D[float32](width, height, depth)
+			require.Nil(t, err)
+			require.True(t, validId(outputId))
+
+			// Set some initial values for the input.
+			for i := range input {
+				for j := range input[i] {
+					for k := range input[i][j] {
+						input[i][j][k] = float32(i*height*depth + j*depth + k)
+					}
+				}
+			}
+
+			// Run the function and test that all values were transferred from the input to the output.
+			require.NotEqual(t, input, output)
+			err = functionId.Run(Grid{X: width, Y: height, Z: depth}, inputId, outputId)
+			require.Nil(t, err)
+			require.Equal(t, input, output)
+
+			// Set some different values in the input and run the function again.
+			for i := range input {
+				for j := range input[i] {
+					for k := range input[i][j] {
+						input[i][j][k] = float32(i*height*depth*2 + j*depth + k + 100)
+					}
+				}
+			}
+			require.NotEqual(t, input, output)
+			err = functionId.Run(Grid{X: width, Y: height, Z: depth}, inputId, outputId)
 			require.Nil(t, err)
 			require.Equal(t, input, output)
 		})

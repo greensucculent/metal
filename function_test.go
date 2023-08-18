@@ -29,6 +29,8 @@ var (
 	sourcePower string
 	//go:embed test/sine.metal
 	sourceSine string
+	//go:embed test/transferType.metal
+	sourceTransferType string
 )
 
 var (
@@ -396,6 +398,78 @@ func Test_FunctionId_Run_3D(t *testing.T) {
 			require.Equal(t, input, output)
 		})
 	}
+}
+
+// Test_FunctionId_types tests that specific primitive types in go line up with specific primitive
+// types in metal.
+func Test_FunctionId_types(t *testing.T) {
+	for _, metalType := range []string{
+		"float",
+		"half",
+		"int",
+		"short",
+		"uint",
+		"ushort",
+	} {
+		switch metalType {
+		case "float":
+			testType[float32](t, metalType, false, func(i int) float32 { return float32(i) })
+			testType[float64](t, metalType, true, func(i int) float64 { return float64(i) })
+		case "half":
+			// Go doesn't currently have an equivalent "float16" type
+			testType[float32](t, metalType, true, func(i int) float32 { return float32(i) })
+		case "int":
+			testType[int32](t, metalType, false, func(i int) int32 { return int32(i) })
+			testType[int64](t, metalType, true, func(i int) int64 { return int64(i) })
+		case "short":
+			testType[int16](t, metalType, false, func(i int) int16 { return int16(i) })
+			testType[int32](t, metalType, true, func(i int) int32 { return int32(i) })
+		case "uint":
+			testType[uint32](t, metalType, false, func(i int) uint32 { return uint32(i) })
+			testType[uint64](t, metalType, true, func(i int) uint64 { return uint64(i) })
+		case "ushort":
+			testType[uint16](t, metalType, false, func(i int) uint16 { return uint16(i) })
+			testType[uint32](t, metalType, true, func(i int) uint32 { return uint32(i) })
+		}
+	}
+}
+
+// testType runs a test for a buffer type.
+func testType[T BufferType](t *testing.T, metalType string, wantFail bool, setter func(int) T) {
+	t.Run(fmt.Sprintf("%s_%v", metalType, wantFail), func(t *testing.T) {
+		// Build the metal code.
+		source := fmt.Sprintf(sourceTransferType, metalType, metalType)
+
+		// Set up a metal function.
+		functionId, err := NewFunction(source, "transferType")
+		require.Nil(t, err)
+		require.True(t, validId(functionId))
+
+		// Create the input and output buffers.
+		inputId, input, err := NewBuffer1D[T](100)
+		require.Nil(t, err)
+		require.True(t, validId(inputId))
+		outputId, output, err := NewBuffer1D[T](100)
+		require.Nil(t, err)
+		require.True(t, validId(outputId))
+
+		// Set the inputs.
+		for i := range input {
+			input[i] = setter(i)
+		}
+
+		// Run the metal function.
+		functionId.Run(Grid{X: 100}, inputId, outputId)
+		require.Nil(t, err)
+
+		// Test that the inputs were either correctly or incorrectly transferred over to the
+		// outputs, depending on the test scenario.
+		if wantFail {
+			require.NotEqual(t, input, output)
+		} else {
+			require.Equal(t, input, output)
+		}
+	})
 }
 
 // Benchmark_Run benchmarks running a computational process for a wide range of widths both in the

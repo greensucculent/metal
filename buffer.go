@@ -32,6 +32,7 @@ func (id BufferId) Valid() bool {
 	return id > 0
 }
 
+// A BufferType is a type that can be used to create a new metal buffer.
 type BufferType interface {
 	~int8 | ~int16 | ~int32 | ~int64 | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~float32 | ~float64
 }
@@ -89,6 +90,7 @@ func NewBuffer3D[T BufferType](width, height, depth int) (BufferId, [][][]T, err
 	return bufferId, b3, nil
 }
 
+// newBuffer is the common internal function for creating a new buffer with N dimensions.
 func newBuffer[T BufferType](dimLens ...int) (BufferId, []T, error) {
 	if len(dimLens) == 0 {
 		return 0, nil, errors.New("Missing dimension(s)")

@@ -6,6 +6,8 @@ package metal
 import (
 	_ "embed"
 	"fmt"
+	"math"
+	"math/rand"
 	"sort"
 	"strconv"
 	"sync"
@@ -392,6 +394,41 @@ func Test_FunctionId_Run_3D(t *testing.T) {
 			err = functionId.Run(Grid{X: width, Y: height, Z: depth}, inputId, outputId)
 			require.Nil(t, err)
 			require.Equal(t, input, output)
+		})
+	}
+}
+
+// Benchmark_Run benchmarks running a computational process for a wide range of widths both in the
+// standard, serial method and in the GPU-accelerated parallel method.
+func Benchmark_Run(b *testing.B) {
+	for _, width := range []int{100, 100_000, 100_000_000} {
+
+		// Set up a metal function.
+		functionId, _ := NewFunction(sourceSine, "sine")
+		addId()
+
+		// Set up input and output buffers.
+		inputId, input, _ := NewBuffer1D[float32](width)
+		addId()
+		outputId, output, _ := NewBuffer1D[float32](width)
+		addId()
+
+		for i := range input {
+			input[i] = rand.Float32()
+		}
+
+		b.Run(fmt.Sprintf("Serial_%d", width), func(b *testing.B) {
+			for n := 0; n < b.N; n++ {
+				for i := range input {
+					output[i] = float32(math.Sin(float64(input[i]))) * 0.01 * 0.01
+				}
+			}
+		})
+
+		b.Run(fmt.Sprintf("Parallel_%d", width), func(b *testing.B) {
+			for n := 0; n < b.N; n++ {
+				functionId.Run(Grid{X: 1}, inputId, outputId)
+			}
 		})
 	}
 }

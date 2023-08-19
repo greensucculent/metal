@@ -18,11 +18,6 @@ import (
 	"unsafe"
 )
 
-func init() {
-	// Initialize the device that will be used to run the computations.
-	C.metal_init()
-}
-
 // A BufferId references a specific metal buffer created with NewBuffer.
 type BufferId int
 

@@ -25,8 +25,6 @@ var (
 	sourceTransfer2D string
 	//go:embed test/transfer3D.metal
 	sourceTransfer3D string
-	//go:embed test/power.metal
-	sourcePower string
 	//go:embed test/sine.metal
 	sourceSine string
 	//go:embed test/transferType.metal

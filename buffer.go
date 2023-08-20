@@ -34,7 +34,8 @@ type BufferType interface {
 
 // NewBuffer1D allocates a 1-dimensional block of memory that is accessible to both the CPU and GPU.
 // It returns a unique Id for the buffer and a slice that wraps the new memory and has a length and
-// capacity equal to width.
+// capacity equal to width. This should be called only once for every argument supplied to a metal
+// function, no matter how many times the buffer is used or for which metal functions.
 //
 // The Id is used to reference the buffer as an argument for the metal function.
 //
@@ -47,7 +48,8 @@ func NewBuffer1D[T BufferType](width int) (BufferId, []T, error) {
 // NewBuffer2D allocates a 2-dimensional block of memory that is accessible to both the CPU and GPU.
 // It returns a unique Id for the buffer and a slice that wraps the new memory and has a length and
 // capacity equal to width. Each element in the slice is another slice with a length equal to
-// height.
+// height. This should be called only once for every argument supplied to a metal function, no
+// matter how many times the buffer is used or for which metal functions.
 //
 // The Id is used to reference the buffer as an argument for the metal function.
 //
@@ -67,7 +69,9 @@ func NewBuffer2D[T BufferType](width, height int) (BufferId, [][]T, error) {
 // NewBuffer3D allocates a 3-dimensional block of memory that is accessible to both the CPU and GPU.
 // It returns a unique Id for the buffer and a slice that wraps the new memory and has a length and
 // capacity equal to width. Each element in the slice is another slice with a length equal to
-// height, and each of their elements is in turn another slice with a length equal to depth.
+// height, and each of their elements is in turn another slice with a length equal to depth. This
+// should be called only once for every argument supplied to a metal function, no matter how many
+// times the buffer is used or for which metal functions.
 //
 // The Id is used to reference the buffer as an argument for the metal function.
 //

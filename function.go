@@ -26,7 +26,8 @@ func init() {
 type FunctionId int
 
 // NewFunction sets up a new function that will run on the default GPU. It is built with the
-// specified function in the provided metal code.
+// specified function in the provided metal code. This needs to be called only once for every
+// function.
 func NewFunction(metalSource, funcName string) (FunctionId, error) {
 	src := C.CString(metalSource)
 	defer C.free(unsafe.Pointer(src))

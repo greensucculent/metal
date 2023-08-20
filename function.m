@@ -164,7 +164,7 @@ _Bool function_run(int functionId, int width, int height, int depth,
   //
   //     pipeline.threadExecutionWidth:
   //         Maximum number of threads that the GPU can execute at one time in
-  //         parallel (aka thread warp size, aka SIMD group)
+  //         parallel (aka thread warp size, aka SIMD group size)
   //     pipeline.maxTotalThreadsPerThreadgroup:
   //         Maximum number of threads that can be bundled together into a
   //         threadgroup

@@ -398,6 +398,77 @@ func Test_FunctionId_Run_3D(t *testing.T) {
 	}
 }
 
+// Test_FunctionId_Run_threadSafe tests that FunctionId's Run method can handle multiple parallel
+// invocations and still operate on the correct set of buffers.
+func Test_FunctionId_Run_threadSafe(t *testing.T) {
+	type data struct {
+		iteration int
+		input     []float32
+		output    []float32
+		err       error
+	}
+
+	// Set up the metal function.
+	functionId, err := NewFunction(sourceTransfer1D, "transfer1D")
+	require.Nil(t, err)
+	require.True(t, validId(functionId))
+
+	// We're going to use a wait group to block each goroutine after it's prepared until they're all
+	// ready to fire.
+	numIter := 100
+	var wg sync.WaitGroup
+	wg.Add(numIter)
+
+	dataCh := make(chan data)
+
+	width := 100_000
+	grid := Grid{X: width}
+
+	// Prepare one goroutine to run the metal function with unique buffers for each iteration.
+	for iteration := 1; iteration <= numIter; iteration++ {
+		// Create the buffers for this iteration.
+		inputId, input, err := NewBuffer1D[float32](width)
+		require.Nil(t, err)
+		require.True(t, validId(inputId))
+		outputId, output, err := NewBuffer1D[float32](width)
+		require.Nil(t, err)
+		require.True(t, validId(outputId))
+
+		// Set values in the input so we can test that the output was operated on correctly.
+		for i := range input {
+			input[i] = float32(i * iteration)
+		}
+
+		// Spin up a new goroutine. This will wait until all goroutines are ready to fire, then
+		// create a new metal function and send it back to the main thread.
+		go func(iteration int) {
+			wg.Wait()
+
+			err := functionId.Run(grid, inputId, outputId)
+
+			dataCh <- data{
+				iteration: iteration,
+				input:     input,
+				output:    output,
+				err:       err,
+			}
+		}(iteration)
+
+		// Mark that this goroutine is ready.
+		wg.Done()
+	}
+
+	// Test that each output received the correct values.
+	for iteration := 1; iteration <= numIter; iteration++ {
+		data := <-dataCh
+		require.Nil(t, err, "Unable to run metal function (iteration %d): %s", data.iteration, err)
+
+		for i := range data.output {
+			require.Equal(t, float32(i*data.iteration), data.output[i], "Iteration %d failed on item %d", data.iteration, i+1)
+		}
+	}
+}
+
 // Test_FunctionId_types tests that specific primitive types in go line up with specific primitive
 // types in metal.
 func Test_FunctionId_types(t *testing.T) {

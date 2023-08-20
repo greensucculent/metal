@@ -411,17 +411,17 @@ func Test_FunctionId_types(t *testing.T) {
 	} {
 		switch metalType {
 		case "float":
-			testType[float32](t, metalType, false, func(i int) float32 { return float32(i) })
-			testType[float64](t, metalType, true, func(i int) float64 { return float64(i) })
+			testType[float32](t, metalType, false, func(i int) float32 { return float32(i) * 1.1 })
+			testType[float64](t, metalType, true, func(i int) float64 { return float64(i) * 1.1 })
 		case "half":
 			// Go doesn't currently have an equivalent "float16" type
-			testType[float32](t, metalType, true, func(i int) float32 { return float32(i) })
+			testType[float32](t, metalType, true, func(i int) float32 { return float32(i) * 1.1 })
 		case "int":
-			testType[int32](t, metalType, false, func(i int) int32 { return int32(i) })
-			testType[int64](t, metalType, true, func(i int) int64 { return int64(i) })
+			testType[int32](t, metalType, false, func(i int) int32 { return int32(-i) })
+			testType[int64](t, metalType, true, func(i int) int64 { return int64(-i) })
 		case "short":
-			testType[int16](t, metalType, false, func(i int) int16 { return int16(i) })
-			testType[int32](t, metalType, true, func(i int) int32 { return int32(i) })
+			testType[int16](t, metalType, false, func(i int) int16 { return int16(-i) })
+			testType[int32](t, metalType, true, func(i int) int32 { return int32(-i) })
 		case "uint":
 			testType[uint32](t, metalType, false, func(i int) uint32 { return uint32(i) })
 			testType[uint64](t, metalType, true, func(i int) uint64 { return uint64(i) })

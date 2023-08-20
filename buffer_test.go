@@ -172,12 +172,12 @@ func Test_NewBuffer(t *testing.T) {
 	testNewBuffer(t, func(i int) uint16 { return uint16(i) })
 	testNewBuffer(t, func(i int) uint32 { return uint32(i) })
 	testNewBuffer(t, func(i int) uint64 { return uint64(i) })
-	testNewBuffer(t, func(i int) int8 { return int8(i) })
-	testNewBuffer(t, func(i int) int16 { return int16(i) })
-	testNewBuffer(t, func(i int) int32 { return int32(i) })
-	testNewBuffer(t, func(i int) int64 { return int64(i) })
-	testNewBuffer(t, func(i int) float32 { return float32(i) })
-	testNewBuffer(t, func(i int) float64 { return float64(i) })
+	testNewBuffer(t, func(i int) int8 { return int8(-i) })
+	testNewBuffer(t, func(i int) int16 { return int16(-i) })
+	testNewBuffer(t, func(i int) int32 { return int32(-i) })
+	testNewBuffer(t, func(i int) int64 { return int64(-i) })
+	testNewBuffer(t, func(i int) float32 { return float32(i) * 1.1 })
+	testNewBuffer(t, func(i int) float64 { return float64(i) * 1.1 })
 
 	// Test custom types that satisfy the BufferType constraint.
 	type MyByte byte
@@ -193,17 +193,17 @@ func Test_NewBuffer(t *testing.T) {
 	type MyUint64 uint64
 	testNewBuffer(t, func(i int) MyUint64 { return MyUint64(i) })
 	type MyInt8 int8
-	testNewBuffer(t, func(i int) MyInt8 { return MyInt8(i) })
+	testNewBuffer(t, func(i int) MyInt8 { return MyInt8(-i) })
 	type MyInt16 int16
-	testNewBuffer(t, func(i int) MyInt16 { return MyInt16(i) })
+	testNewBuffer(t, func(i int) MyInt16 { return MyInt16(-i) })
 	type MyInt32 int32
-	testNewBuffer(t, func(i int) MyInt32 { return MyInt32(i) })
+	testNewBuffer(t, func(i int) MyInt32 { return MyInt32(-i) })
 	type MyInt64 int64
-	testNewBuffer(t, func(i int) MyInt64 { return MyInt64(i) })
+	testNewBuffer(t, func(i int) MyInt64 { return MyInt64(-i) })
 	type MyFloat32 float32
-	testNewBuffer(t, func(i int) MyFloat32 { return MyFloat32(i) })
+	testNewBuffer(t, func(i int) MyFloat32 { return MyFloat32(i) * 1.1 })
 	type MyFloat64 float64
-	testNewBuffer(t, func(i int) MyFloat64 { return MyFloat64(i) })
+	testNewBuffer(t, func(i int) MyFloat64 { return MyFloat64(i) * 1.1 })
 
 	// Maximum number of bytes
 	t.Run("maxSize_newBuffer", func(t *testing.T) {

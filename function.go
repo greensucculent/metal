@@ -95,7 +95,8 @@ type Grid struct {
 
 // Run executes the computational function on the GPU. buffers is a list of buffers that have a
 // buffer Id, which is used to retrieve the correct block of memory for the buffer. Each buffer is
-// supplied as an argument to the metal function in the order given here.
+// supplied as an argument to the metal function in the order given here. This can be called
+// multiple times for the same Function Id and/or same buffers and is safe for concurrent use.
 func (id FunctionId) Run(grid Grid, buffers ...BufferId) error {
 
 	// Make a list of buffer Ids.

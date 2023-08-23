@@ -6,28 +6,6 @@ import (
 	"github.com/greensucculent/metal"
 )
 
-func ExampleNewFunction() {
-	source := `
-		#include <metal_stdlib>
-		#include <metal_math>
-
-		using namespace metal;
-
-		kernel void sine(constant float *input, device float *result, uint pos [[thread_position_in_grid]]) {
-			int index = pos;
-			result[pos] = sin(input[pos]) * 0.01 * 0.01;
-		}
-	`
-
-	functionId, err := metal.NewFunction(source, "sine")
-	if err != nil {
-		log.Fatalf("Unable to create metal function: %v", err)
-	}
-
-	// functionId is used to actually run the function later.
-	_ = functionId
-}
-
 func ExampleNewBuffer1D() {
 	// Create a 1-dimensional buffer with a width of 100. This will allocate 400 bytes (100 items *
 	// sizeof(float32)).
@@ -71,4 +49,26 @@ func ExampleNewBuffer3D() {
 
 	// buffer is used to load/retrieve data from the pipeline.
 	_ = buffer
+}
+
+func ExampleNewFunction() {
+	source := `
+		#include <metal_stdlib>
+		#include <metal_math>
+
+		using namespace metal;
+
+		kernel void sine(constant float *input, device float *result, uint pos [[thread_position_in_grid]]) {
+			int index = pos;
+			result[pos] = sin(input[pos]) * 0.01 * 0.01;
+		}
+	`
+
+	functionId, err := metal.NewFunction(source, "sine")
+	if err != nil {
+		log.Fatalf("Unable to create metal function: %v", err)
+	}
+
+	// functionId is used to actually run the function later.
+	_ = functionId
 }
